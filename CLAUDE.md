@@ -37,8 +37,8 @@ AWS-first. Prefer managed, serverless services over self-managed infrastructure 
 
 ## How to work in this repo
 
-1. **At session start**: read this file, then read `roadmap.md` to see current phase, what's done, and what's next. Do not start work without checking the roadmap.
-2. **Keep `roadmap.md` current**: when you complete a milestone, decide a new approach, or learn something that changes plans, update the roadmap in the same change. The roadmap is the project's working memory between sessions — if it's stale, future sessions will redo work or miss context.
+1. **At session start**: read this file, then read `docs/roadmap.md` to see current phase, what's done, and what's next. Do not start work without checking the roadmap.
+2. **Keep `docs/roadmap.md` current**: when you complete a milestone, decide a new approach, or learn something that changes plans, update the roadmap in the same change. The roadmap is the project's working memory between sessions — if it's stale, future sessions will redo work or miss context.
 3. **Plan before building**: for any non-trivial change, sketch the approach (which AWS services, IAM boundaries, data flow) and confirm with the user before writing infrastructure code.
 4. **Verify deployments**: after deploying CDK changes, confirm with `aws` CLI calls or console checks rather than assuming the stack is healthy.
 5. **Document trade-offs in code**: when a decision isn't obvious (e.g., DynamoDB vs. Aurora for a table), leave a short comment with the reasoning so it survives.

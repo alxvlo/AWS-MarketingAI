@@ -140,7 +140,7 @@ To deploy a single stack:
 cdk deploy SatisfactionMeterCapture
 ```
 
-After deployment, the terminal will print the API endpoint URLs. These are also saved in `deploy-outputs.json`.
+After deployment, the terminal will print the API endpoint URLs. These are also saved in `cdk.out/deploy-outputs.json`.
 
 ---
 
@@ -153,7 +153,7 @@ After deployment, the terminal will print the API endpoint URLs. These are also 
 | Get presigned upload URL | `https://bj0iusoe6a.execute-api.ap-southeast-1.amazonaws.com/prod/upload` |
 | Get submission result | `https://axxsy44fvk.execute-api.ap-southeast-1.amazonaws.com/prod/results/{submissionId}` |
 
-> These URLs are stable as long as nobody destroys and recreates the stacks. If you redeploy and they change, check `deploy-outputs.json` for the new values.
+> These URLs are stable as long as nobody destroys and recreates the stacks. If you redeploy and they change, check `cdk.out/deploy-outputs.json` for the new values.
 
 ### End-to-End Test
 
@@ -200,8 +200,9 @@ AWS-MarketingAI/
 │   └── api-stack.ts          # GET /results endpoint
 ├── lambdas/              # Lambda handler source files
 ├── web/                  # Frontend HTML/JS
-├── roadmap.md            # Project progress and decisions log
+├── docs/                 # roadmap.md, SETUP.md, presentation, architecture PDF
+├── scripts/              # Helper scripts (e.g. push-tickets.sh)
 └── CLAUDE.md             # AI assistant context (read by Claude)
 ```
 
-Read `roadmap.md` to see what's been built, what's in progress, and what's next.
+Read `docs/roadmap.md` to see what's been built, what's in progress, and what's next.

@@ -7,5 +7,3 @@ cdk.out/
 !jest.config.js
 !cdk.json
 !web/app.js
-deploy-outputs.txt
-deploy-outputs.json
