@@ -226,7 +226,7 @@ To deploy a single stack:
 cdk deploy SatisfactionMeterCapture
 ```
 
-After deployment, the terminal prints the API endpoint URLs. These are also saved in `deploy-outputs.json` at the project root.
+After deployment, the terminal prints the API endpoint URLs. These are also saved in `cdk.out/deploy-outputs.json`.
 
 ---
 
@@ -237,7 +237,7 @@ After deployment, the terminal prints the API endpoint URLs. These are also save
 | Get presigned upload URL | `https://bj0iusoe6a.execute-api.ap-southeast-1.amazonaws.com/prod/upload` |
 | Get submission result | `https://axxsy44fvk.execute-api.ap-southeast-1.amazonaws.com/prod/results/{submissionId}` |
 
-> These URLs are stable as long as the stacks are not destroyed and recreated. If they change after a redeploy, check `deploy-outputs.json` for the updated values.
+> These URLs are stable as long as the stacks are not destroyed and recreated. If they change after a redeploy, check `cdk.out/deploy-outputs.json` for the updated values.
 
 ---
 
@@ -276,6 +276,7 @@ Install build tools:
 
 ## Key References
 
-- `roadmap.md` — what's built, what's in progress, what's next. Read this before starting any work.
+- `docs/roadmap.md` — what's built, what's in progress, what's next. Read this before starting any work.
+- `docs/SETUP.md` — full setup walkthrough.
 - `CLAUDE.md` — architectural decisions and working conventions (used by the AI assistant).
-- `deploy-outputs.json` — current deployed resource names and API URLs.
+- `cdk.out/deploy-outputs.json` — current deployed resource names and API URLs.
