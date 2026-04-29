@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Satisfaction Meter</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 600; }
+    input, button { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; }
+    button { margin-top: 1rem; cursor: pointer; }
+    pre { background: #f4f4f4; padding: 1rem; overflow: auto; white-space: pre-wrap; }
+    .notice { font-size: 0.85rem; color: #666; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Satisfaction Meter</h1>
+  <p>Upload a photo. We'll detect the dominant emotion and email you a tailored offer.</p>
+  <p class="notice">Photos are processed for emotion detection and deleted within 30 days.</p>
+
+  <form id="upload-form">
+    <label for="email">Your email</label>
+    <input id="email" type="email" required />
+
+    <label for="photo">Photo (JPEG, PNG, or WebP, max 5 MB)</label>
+    <input id="photo" type="file" accept="image/jpeg,image/png,image/webp" required />
+
+    <button type="submit">Upload</button>
+  </form>
+
+  <pre id="status"></pre>
+
+  <script src="app.js"></script>
+</body>
+</html>
