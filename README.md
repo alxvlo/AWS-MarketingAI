@@ -7,24 +7,32 @@ A serverless web application that detects a customer's facial emotion from a pho
 
 ## What It Does
 
-1. A customer visits the web portal and uploads a photo (or uses their webcam)
-2. Their image is sent to **Amazon Rekognition**, which detects the dominant facial emotion
+1. A customer visits the web portal — a live webcam feed starts with a face-detection overlay (green outline when a face is detected, red when not). After 1.5 seconds of stable face detection the snapshot is auto-captured. Manual file upload is also available as a fallback.
+2. The snapshot is uploaded directly to **S3** via a presigned URL; this triggers **Amazon Rekognition**, which detects the dominant facial emotion
 3. Based on the emotion, a matching email template is selected and sent via **Amazon SES**
 4. The result (emotion detected, email sent) is stored in **DynamoDB** and retrievable via a REST API
 
-| Detected Emotion | Marketing Action |
-|---|---|
-| Happy | Request a product review |
-| Sad | Send a voucher / discount |
-| Surprised | Flash deal offer |
-| Angry | Apology + discount |
-| Neutral / Calm | General promotional offer |
+| Priority | Detected Emotion | Marketing Action |
+|---|---|---|
+| 1 | Happy | Request a product review |
+| 2 | Surprised | Flash deal offer |
+| 3 | Calm | General wellness / relaxation offer |
+| 4 | Neutral | General promotional offer |
+| 5 | Sad | Send a voucher / discount |
+| 6 | Angry | Apology + discount |
+| 7 | Fearful | Reassurance offer |
+
+> When two emotions tie on confidence, the priority order above wins (HAPPY > SURPRISED > CALM > NEUTRAL > SAD > ANGRY > FEARFUL).
 
 ---
 
 ## Architecture
 
 ```
+[Browser Webcam]
+        │  (0) face-api.js client-side overlay — auto-snap on 1.5s stable face
+        │      (or: manual file upload as fallback)
+        ▼
 [Browser / End User]
         │  (1) POST /upload — request presigned URL
         ▼
@@ -32,23 +40,36 @@ A serverless web application that detects a customer's facial emotion from a pho
         │
         │  (2) PUT image directly to S3 (browser → S3, no server proxy)
         ▼
-[S3 Bucket]  ──► (ObjectCreated event)
+[S3 Bucket]  ──► (ObjectCreated event via EventBridge)
         │
         │  (3) Event triggers Lambda
         ▼
 [Lambda: Rekognition Handler] ──► [Amazon Rekognition DetectFaces]
-        │                              returns emotion confidence scores
+        │   │                          returns emotion confidence scores
+        │   └──► [SQS DLQ]  (failed events captured here)
         │  (4) Store result
         ▼
 [DynamoDB: submissions table]
         │
-        │  (5) Select SES template based on dominant emotion
+        │  (5) Select SES template based on dominant emotion (tie-break by priority order)
         ▼
 [Lambda: SES Dispatcher] ──► [Amazon SES] ──► [Customer Inbox]
-        │
+        │   │
+        │   └──► [SQS DLQ]  (failed sends captured here)
         │  (6) Write emailSentAt + templateUsed back to DynamoDB
         ▼
 [API Gateway: GET /results/{submissionId}] ◄── [Caller]
+
+─── Analytics / Admin path (Phase 3 — planned) ───────────────────────────────
+[Admin Browser]
+        │  POST /admin/login → Lambda Authorizer validates against SSM credential
+        ▼
+[API Gateway: GET /analytics/*] ──► [Lambda Authorizer] ──► [Lambda: Analytics Handlers]
+        │                                                           │
+        │                                                           ▼
+        │                                              [DynamoDB scan/query]
+        ▼
+[Admin Dashboard] — emotion distribution · volume over time · campaign performance · 7-day trend
 ```
 
 Images never pass through a Lambda proxy — they go directly from the browser to S3 via a presigned URL. This keeps Lambdas stateless and avoids API Gateway's 6 MB payload limit.
@@ -59,12 +80,16 @@ Images never pass through a Lambda proxy — they go directly from the browser t
 
 | Layer | Service | Role |
 |---|---|---|
+| Webcam Capture | Browser MediaDevices API + face-api.js (client-side) | Live face-detection overlay; auto-snap on stable face; manual upload fallback |
 | Upload | API Gateway + Lambda + S3 | Presigned URL generation, direct browser-to-S3 upload |
 | Emotion Detection | Lambda + Amazon Rekognition | S3 event trigger → `DetectFaces` → dominant emotion |
 | Messaging | Lambda + Amazon SES | Emotion-to-template mapping, transactional email dispatch |
-| Persistence | Amazon DynamoDB | Submission records with 30-day TTL auto-expiry |
+| Persistence | Amazon DynamoDB | Submission records (submissions table) + campaign tracking (campaigns table) |
 | Results API | API Gateway + Lambda | `GET /results/{submissionId}` endpoint |
-| Infrastructure | AWS CDK (TypeScript) | Four stacks: `capture`, `inference`, `messaging`, `api` |
+| Analytics | API Gateway + Lambda + DynamoDB | `GET /analytics/emotions`, `/analytics/campaigns`, `/analytics/trends` (Phase 3 — planned) |
+| Admin Auth | API Gateway Lambda Authorizer + SSM Parameter Store | Single admin credential; protects `/analytics/*` endpoints (Phase 3 — planned) |
+| Reliability | SQS DLQs + SES bounce/complaint handling | Captures failed Rekognition and SES events; protects sender reputation |
+| Infrastructure | AWS CDK (TypeScript) | Five stacks: `capture`, `inference`, `messaging`, `api`, `analytics` |
 | Identity | AWS IAM | Least-privilege role per Lambda |
 | Config | SSM Parameter Store | Runtime credentials and config (free alternative to Secrets Manager) |
 | CI/CD | GitHub Actions + OIDC | Push to `main` → synth → test → deploy; no stored AWS credentials |
@@ -82,11 +107,13 @@ AWS-MarketingAI/
 ├── bin/                      # CDK app entry point
 ├── lib/                      # CDK stack definitions
 │   ├── capture-stack.ts          # S3 bucket + presigned URL Lambda
-│   ├── inference-stack.ts        # Rekognition Lambda + DynamoDB
-│   ├── messaging-stack.ts        # SES dispatch Lambda
-│   └── api-stack.ts              # GET /results endpoint
+│   ├── inference-stack.ts        # Rekognition Lambda + DynamoDB + DLQ
+│   ├── messaging-stack.ts        # SES dispatch Lambda + DLQ
+│   ├── api-stack.ts              # GET /results endpoint
+│   └── analytics-stack.ts        # Analytics Lambdas + Lambda Authorizer + campaigns table (Phase 3)
 ├── lambdas/                  # Lambda handler source files
-├── web/                      # Frontend HTML/JS (upload portal)
+├── web/                      # Frontend: customer portal (webcam + manual upload) and admin dashboard
+│   └── admin/                    # Admin login + analytics dashboard (Phase 3)
 ├── docs/                     # Project docs (roadmap, setup, presentation, architecture PDF)
 ├── scripts/                  # Helper scripts (e.g. push-tickets.sh)
 └── CLAUDE.md                 # AI assistant context
@@ -236,6 +263,7 @@ After deployment, the terminal prints the API endpoint URLs. These are also save
 |---|---|
 | Get presigned upload URL | `https://bj0iusoe6a.execute-api.ap-southeast-1.amazonaws.com/prod/upload` |
 | Get submission result | `https://axxsy44fvk.execute-api.ap-southeast-1.amazonaws.com/prod/results/{submissionId}` |
+| Analytics endpoints (Phase 3 — not yet deployed) | `/analytics/emotions`, `/analytics/campaigns`, `/analytics/trends` — admin-auth protected |
 
 > These URLs are stable as long as the stacks are not destroyed and recreated. If they change after a redeploy, check `cdk.out/deploy-outputs.json` for the updated values.
 
@@ -245,7 +273,7 @@ After deployment, the terminal prints the API endpoint URLs. These are also save
 
 1. Open `web/index.html` in your browser
 2. Enter `alexvelo199@gmail.com` as the recipient email — this is the SES-verified address used for testing
-3. Upload a photo with a clearly visible face
+3. Allow camera access when prompted. Wait for the green face outline to appear in the webcam view — the snapshot is auto-captured after 1.5s of stable detection. Alternatively, click **Upload File** to use a local image.
 4. Wait ~5 seconds — the page will display the detected emotion and email status
 5. Check the `alexvelo199@gmail.com` inbox for the marketing email
 
