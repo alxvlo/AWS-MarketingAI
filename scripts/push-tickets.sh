@@ -21,7 +21,7 @@ if [[ -z "${JIRA_EMAIL:-}" || -z "${JIRA_TOKEN:-}" ]]; then
   exit 1
 fi
 
-AUTH=$(echo -n "${JIRA_EMAIL}:${JIRA_TOKEN}" | base64)
+AUTH=$(echo -n "${JIRA_EMAIL}:${JIRA_TOKEN}" | base64 | tr -d '\n')
 
 create_ticket() {
   local summary="$1"
@@ -52,7 +52,7 @@ create_ticket() {
 EOF
 )
 
-  response=$(curl -s -o /tmp/jira_response.json -w "%{http_code}" \
+  response=$(curl -s --http1.1 -o /tmp/jira_response.json -w "%{http_code}" \
     -X POST \
     -H "Authorization: Basic ${AUTH}" \
     -H "Content-Type: application/json" \
@@ -75,19 +75,19 @@ EOF
 echo ""
 echo "📋 STEP 1: Fetching existing open tickets to mark as DONE..."
 
-existing=$(curl -s \
+existing=$(curl -s --http1.1 \
   -H "Authorization: Basic ${AUTH}" \
   -H "Content-Type: application/json" \
-  "${JIRA_BASE}/rest/api/3/search?jql=project=${PROJECT_KEY}+AND+statusCategory+!=+Done&maxResults=100")
+  "${JIRA_BASE}/rest/api/3/search/jql?jql=project=${PROJECT_KEY}+AND+statusCategory+!=+Done&maxResults=100")
 
-issue_keys=$(echo "$existing" | grep -o '"key":"AWS-[0-9]*"' | cut -d'"' -f4)
+issue_keys=$(echo "$existing" | grep -o '"key":"AWS-[0-9]*"' | cut -d'"' -f4 || true)
 
 if [[ -z "$issue_keys" ]]; then
   echo "  ℹ️  No open tickets found. Skipping."
 else
   for key in $issue_keys; do
     # Get available transitions
-    transitions=$(curl -s \
+    transitions=$(curl -s --http1.1 \
       -H "Authorization: Basic ${AUTH}" \
       "${JIRA_BASE}/rest/api/3/issue/${key}/transitions")
 
@@ -98,7 +98,7 @@ else
     fi
 
     if [[ -n "$done_id" ]]; then
-      curl -s -o /dev/null -w "" \
+      curl -s --http1.1 -o /dev/null -w "" \
         -X POST \
         -H "Authorization: Basic ${AUTH}" \
         -H "Content-Type: application/json" \

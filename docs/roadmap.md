@@ -6,7 +6,7 @@
 
 ## ✅ DONE — Phase 0: Bootstrap
 All foundational AWS infrastructure confirmed working.
-- AWS account structure confirmed, IAM users created for 6 team members
+- AWS account structure confirmed, 1 shared IAM user created for all team members
 - CDK app skeleton (TypeScript) initialized
 - Local dev tooling set up
 - S3 bucket (SSE-S3, 30-day lifecycle, EventBridge enabled, public access blocked)
