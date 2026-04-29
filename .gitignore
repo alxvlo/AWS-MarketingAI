@@ -1,6 +1,7 @@
 node_modules/
 dist/
 cdk.out/
+.claude/settings.local.json
 *.d.ts
 *.js.map
 *.js
