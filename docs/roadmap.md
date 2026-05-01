@@ -43,13 +43,14 @@ Addressing consultation feedback + known bugs from testing.
 - [ ] SES bounce/complaint handling
 
 ### 2C — Webcam Capture (Customer Portal UX)
-- [ ] Add webcam feed to customer portal using browser MediaDevices API
-- [ ] Integrate face-api.js for client-side face detection overlay
-- [ ] Green outline when face detected in frame, red when not
-- [ ] Auto-snap photo when face is centered and stable for 1.5s
-- [ ] Replace webcam view with snapshot preview after auto-snap
-- [ ] Add "Send" button to trigger presigned URL upload flow from snapshot
-- [ ] Support fallback: manual file upload still available
+- [x] Add webcam feed to customer portal (`frontend/app/page.tsx`)
+- [x] Integrate face-api.js for client-side face detection overlay (`frontend/components/FaceOverlay.tsx`)
+- [x] Green outline when face detected in frame, red when not
+- [x] Auto-snap photo when face is centered and stable for 1.5s
+- [x] Replace webcam view with snapshot preview after auto-snap
+- [x] Wire "Send for Analysis" button to presigned URL upload flow via `frontend/lib/api.ts`
+- [x] Support fallback: manual file upload still available
+- [ ] Integration test: end-to-end webcam → upload → Rekognition → email (verify against live API)
 
 ### 2D — CI/CD
 - [x] GitHub Actions + OIDC pipeline (cdk synth → test → cdk deploy on push to main)
@@ -68,8 +69,8 @@ Professor confirmed this is required. Simplified from original over-engineered d
 
 ### 3B — Admin Portal (Frontend + Auth)
 - [ ] API Gateway Lambda Authorizer — validates credentials from SSM Parameter Store (AWS-58)
-- [ ] Admin login page (simple username/password, credentials in SSM) (AWS-64)
-- [ ] Admin dashboard: emotion distribution chart (bar/pie) (AWS-65)
+- [ ] Admin login page (simple username/password, credentials in SSM) (AWS-64) — UI exists at `frontend/app/admin/page.tsx`, pending real Lambda Authorizer wiring
+- [ ] Admin dashboard: emotion distribution chart (bar/pie) (AWS-65) — UI exists at `frontend/app/admin/dashboard/page.tsx` with mock data
 - [ ] Admin dashboard: submission volume over time (line chart) (AWS-66)
 - [ ] Admin dashboard: campaign performance table (sent count per template) (AWS-67)
 - [ ] Admin dashboard: trend forecasting display (simple moving average, 7-day) (AWS-59)

@@ -112,8 +112,18 @@ AWS-MarketingAI/
 │   ├── api-stack.ts              # GET /results endpoint
 │   └── analytics-stack.ts        # Analytics Lambdas + Lambda Authorizer + campaigns table (Phase 3)
 ├── lambdas/                  # Lambda handler source files
-├── web/                      # Frontend: customer portal (webcam + manual upload) and admin dashboard
-│   └── admin/                    # Admin login + analytics dashboard (Phase 3)
+├── frontend/                 # Frontend: Next.js 16 + React 19 + Tailwind 4
+│   ├── app/
+│   │   ├── page.tsx              # Customer webcam capture page
+│   │   ├── admin/page.tsx        # Admin login page
+│   │   └── admin/dashboard/      # Admin analytics dashboard (Phase 3B)
+│   ├── components/
+│   │   ├── WebcamFeed.tsx        # Webcam + file-upload component
+│   │   └── FaceOverlay.tsx       # face-api.js detection overlay
+│   ├── lib/
+│   │   ├── api.ts                # Upload API + presigned URL + polling
+│   │   └── mockAnalytics.ts      # Mock analytics data (pending AWS-70)
+│   └── public/models/            # face-api.js model weights
 ├── docs/                     # Project docs (roadmap, setup, presentation, architecture PDF)
 ├── scripts/                  # Helper scripts (e.g. push-tickets.sh)
 └── CLAUDE.md                 # AI assistant context
@@ -219,6 +229,19 @@ npm install
 
 ---
 
+### 4b. Install Frontend Dependencies
+
+```bash
+cd frontend && npm install && cd ..
+```
+
+Or from the root:
+```bash
+npm run install:all
+```
+
+---
+
 ### 5. Build the TypeScript
 
 ```bash
@@ -271,11 +294,16 @@ After deployment, the terminal prints the API endpoint URLs. These are also save
 
 ## Testing the Full Pipeline
 
-1. Open `web/index.html` in your browser
-2. Enter `alexvelo199@gmail.com` as the recipient email — this is the SES-verified address used for testing
-3. Allow camera access when prompted. Wait for the green face outline to appear in the webcam view — the snapshot is auto-captured after 1.5s of stable detection. Alternatively, click **Upload File** to use a local image.
-4. Wait ~5 seconds — the page will display the detected emotion and email status
-5. Check the `alexvelo199@gmail.com` inbox for the marketing email
+1. Start the development server from the project root:
+   ```bash
+   npm run dev
+   ```
+2. Open `http://localhost:3000` in your browser
+3. Enter `alexvelo199@gmail.com` as the recipient email — this is the SES-verified address used for testing
+4. Allow camera access when prompted. Wait for the green face outline to appear in the webcam view — the snapshot is auto-captured after 1.5s of stable detection. Alternatively, click **Upload a Photo** to use a local image.
+5. Click **Send for Analysis** — wait ~5 seconds for the page to display the detected emotion and email status
+6. Check the `alexvelo199@gmail.com` inbox for the marketing email
+7. For admin analytics, navigate to `http://localhost:3000/admin`
 
 > **Important:** SES is in sandbox mode. Only the verified address above can receive test emails. Using any other address will silently fail — no error will appear but no email will be delivered.
 
@@ -307,4 +335,5 @@ Install build tools:
 - `docs/roadmap.md` — what's built, what's in progress, what's next. Read this before starting any work.
 - `docs/SETUP.md` — full setup walkthrough.
 - `CLAUDE.md` — architectural decisions and working conventions (used by the AI assistant).
+- `frontend/` — Next.js frontend (customer portal + admin dashboard). Run `npm run dev` from root to start.
 - `cdk.out/deploy-outputs.json` — current deployed resource names and API URLs.

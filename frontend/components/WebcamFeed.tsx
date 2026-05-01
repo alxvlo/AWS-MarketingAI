@@ -2,14 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import FaceOverlay from "@/components/FaceOverlay";
+import { submitPhoto, SubmissionResult } from "@/lib/api";
 
 type CameraState = "loading" | "ready" | "denied" | "error" | "snapped";
 type Mode = "camera" | "upload";
+type UploadState = "idle" | "uploading" | "done" | "error";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024;
 
-export default function WebcamFeed() {
+interface WebcamFeedProps {
+  email: string;
+}
+
+export default function WebcamFeed({ email }: WebcamFeedProps) {
   // ── Camera ──────────────────────────────────────────────────────────────────
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const [cameraState, setCameraState] = useState<CameraState>("loading");
@@ -23,9 +29,14 @@ export default function WebcamFeed() {
   const [shutterActive, setShutterActive] = useState(false);
 
   // ── Shared image state (set by snap or file upload) ─────────────────────────
-  // _imageBlob is written here and consumed by AWS-52's upload handler
-  const [_imageBlob, setImageBlob] = useState<Blob | null>(null);
+  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+
+  // ── Upload / result state ─────────────────────────────────────────────────
+  const [uploadState, setUploadState] = useState<UploadState>("idle");
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [result, setResult] = useState<SubmissionResult | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // ── Upload mode ─────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<Mode>("camera");
@@ -147,6 +158,28 @@ export default function WebcamFeed() {
     }
   }
 
+  // ── Submit photo ──────────────────────────────────────────────────────────
+  async function handleSubmit() {
+    if (!imageBlob) return;
+    if (!email.trim()) {
+      setUploadError("Please enter your email address before submitting.");
+      return;
+    }
+    setUploadState("uploading");
+    setUploadError(null);
+    setResult(null);
+    try {
+      const res = await submitPhoto(email.trim(), imageBlob, (msg) =>
+        setUploadStatus(msg)
+      );
+      setResult(res);
+      setUploadState("done");
+    } catch (err) {
+      setUploadError((err as Error).message);
+      setUploadState("error");
+    }
+  }
+
   // ── Retake ───────────────────────────────────────────────────────────────────
   function handleRetake() {
     setImageBlob(null);
@@ -155,6 +188,10 @@ export default function WebcamFeed() {
     setFaceDetected(false);
     setCameraState("loading");
     setCameraKey((k) => k + 1); // forces video element remount → triggers camera effect
+    setUploadState("idle");
+    setUploadStatus("");
+    setResult(null);
+    setUploadError(null);
   }
 
   // ── Mode switch ──────────────────────────────────────────────────────────────
@@ -178,6 +215,10 @@ export default function WebcamFeed() {
       setCameraState("loading");
       setCameraKey((k) => k + 1);
     }
+    setUploadState("idle");
+    setUploadStatus("");
+    setResult(null);
+    setUploadError(null);
     setMode(next);
   }
 
@@ -342,22 +383,48 @@ export default function WebcamFeed() {
             </p>
           )}
 
+          {/* Upload status / result */}
+          {uploadState === "uploading" && (
+            <p className="mt-3 text-sm text-center text-slate-500 animate-pulse">{uploadStatus}</p>
+          )}
+          {uploadState === "error" && (
+            <p className="mt-3 text-sm text-center text-red-500">{uploadError}</p>
+          )}
+          {uploadState === "done" && result && (
+            <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm">
+              <p className="font-semibold text-green-700 mb-1">✓ Analysis complete</p>
+              <p className="text-slate-700">Emotion detected: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
+              <p className="text-slate-700">Email sent: <span className="font-medium">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
+              <p className="text-slate-700">Template used: <span className="font-medium">{result.templateUsed}</span></p>
+            </div>
+          )}
+
           {/* Post-snap action buttons */}
-          {cameraSnapped && (
+          {cameraSnapped && uploadState !== "done" && (
             <div className="mt-3 flex gap-3">
               <button
                 onClick={handleRetake}
-                className="flex-1 rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                disabled={uploadState === "uploading"}
+                className="flex-1 rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Retake
               </button>
               <button
-                disabled
-                className="flex-1 rounded-lg bg-slate-200 py-2.5 text-sm font-medium text-slate-400 cursor-not-allowed"
+                onClick={handleSubmit}
+                disabled={uploadState === "uploading" || !email.trim()}
+                className="flex-1 rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Send for Analysis
+                {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
               </button>
             </div>
+          )}
+          {uploadState === "done" && (
+            <button
+              onClick={handleRetake}
+              className="mt-3 w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Start Over
+            </button>
           )}
         </>
       )}
@@ -411,21 +478,46 @@ export default function WebcamFeed() {
             <p className="mt-2 text-xs text-red-500 text-center">{fileError}</p>
           )}
 
-          {imagePreviewUrl && (
+          {uploadState === "uploading" && (
+            <p className="mt-3 text-sm text-center text-slate-500 animate-pulse">{uploadStatus}</p>
+          )}
+          {uploadState === "error" && (
+            <p className="mt-3 text-sm text-center text-red-500">{uploadError}</p>
+          )}
+          {uploadState === "done" && result && (
+            <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm">
+              <p className="font-semibold text-green-700 mb-1">✓ Analysis complete</p>
+              <p className="text-slate-700">Emotion detected: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
+              <p className="text-slate-700">Email sent: <span className="font-medium">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
+              <p className="text-slate-700">Template used: <span className="font-medium">{result.templateUsed}</span></p>
+            </div>
+          )}
+
+          {imagePreviewUrl && uploadState !== "done" && (
             <div className="mt-3 flex flex-col gap-2">
               <button
-                disabled
-                className="w-full rounded-lg bg-slate-200 py-2.5 text-sm font-medium text-slate-400 cursor-not-allowed"
+                onClick={handleSubmit}
+                disabled={uploadState === "uploading" || !email.trim()}
+                className="w-full rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Send for Analysis
+                {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
               </button>
               <button
                 onClick={handleChooseDifferent}
-                className="text-sm text-center text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors"
+                disabled={uploadState === "uploading"}
+                className="text-sm text-center text-slate-500 hover:text-slate-700 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Choose a different photo
               </button>
             </div>
+          )}
+          {uploadState === "done" && (
+            <button
+              onClick={() => { handleChooseDifferent(); setUploadState("idle"); setResult(null); setUploadError(null); }}
+              className="mt-2 w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Start Over
+            </button>
           )}
         </>
       )}

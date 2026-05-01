@@ -8,7 +8,10 @@
     "build": "tsc",
     "watch": "tsc -w",
     "cdk": "cdk",
-    "test": "jest"
+    "test": "jest",
+    "dev": "cd frontend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd frontend && npm install"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",

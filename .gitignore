@@ -7,4 +7,8 @@ cdk.out/
 *.js
 !jest.config.js
 !cdk.json
-!web/app.js
+
+# Next.js frontend build artifacts
+frontend/.next/
+frontend/node_modules/
+frontend/out/

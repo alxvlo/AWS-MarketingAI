@@ -1,6 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import WebcamFeed from "@/components/WebcamFeed";
 
 export default function CustomerPage() {
+  const [email, setEmail] = useState("");
+
   return (
     <main className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -30,6 +35,8 @@ export default function CustomerPage() {
               required
               autoComplete="email"
               placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-600 focus:border-transparent transition"
             />
           </div>
@@ -39,7 +46,7 @@ export default function CustomerPage() {
             <p className="text-sm font-medium text-slate-700 mb-2">
               Camera preview
             </p>
-            <WebcamFeed />
+            <WebcamFeed email={email} />
           </div>
 
           <p className="text-xs text-slate-400 text-center pb-1">
