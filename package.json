@@ -27,7 +27,7 @@
     "@aws-sdk/client-ses": "^3.600.0",
     "@aws-sdk/lib-dynamodb": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
-    "aws-cdk-lib": "2.194.0",
+    "aws-cdk-lib": "^2.252.0",
     "constructs": "^10.0.0"
   }
 }
