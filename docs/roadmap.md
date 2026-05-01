@@ -61,10 +61,10 @@ Addressing consultation feedback + known bugs from testing.
 Professor confirmed this is required. Simplified from original over-engineered design.
 
 ### 3A — Backend Analytics (DynamoDB-based, no Kinesis/Firehose)
-- [ ] Lambda: GET /analytics/emotions — aggregate emotion counts from DynamoDB scan/query
-- [ ] Lambda: GET /analytics/campaigns — delivery stats (sent, opened, clicked) from campaigns table
-- [ ] Lambda: GET /analytics/trends — emotion counts grouped by day (last 30 days)
-- [ ] DynamoDB campaigns table: track emailSentAt, templateUsed, submissionId per campaign record
+- [x] Lambda: GET /analytics/emotions — aggregate emotion counts from DynamoDB scan (60s in-memory cache)
+- [x] Lambda: GET /analytics/campaigns — delivery stats (totalSent, perTemplate, earliest/latestSentAt) from campaigns table
+- [x] Lambda: GET /analytics/trends — emotion counts grouped by day (last 30 days)
+- [x] DynamoDB campaigns table: dual-written by send-email Lambda — `{submissionId, email, emailSentAt, templateUsed, dominantEmotion}`. Routes are open during 3A; Lambda Authorizer wired up in 3B.
 
 ### 3B — Admin Portal (Frontend + Auth)
 - [ ] API Gateway Lambda Authorizer — validates credentials from SSM Parameter Store
@@ -92,6 +92,8 @@ Professor confirmed this is required. Simplified from original over-engineered d
 |------|----------|--------|
 | 2026-04-29 | EventBridge over direct S3→Lambda notification | Avoids cross-stack CDK circular dependency |
 | 2026-04-29 | Analytics via DynamoDB query, not Kinesis/Firehose/Athena | Simpler, free-tier, professor said OK |
+| 2026-05-01 | Separate `campaigns` table, not reuse `submissions` | Submissions has 30-day TTL — analytics must outlive that. Campaigns gets no TTL so historical send volume survives. Dual-write happens in send-email Lambda. |
+| 2026-05-01 | /analytics/emotions uses 60s module-scope cache | Avoids full table scan on every request from admin dashboard polling; 60s freshness is acceptable for a dashboard. |
 | 2026-04-29 | Admin auth via Lambda Authorizer + SSM, not Cognito | One admin user; Cognito overkill for semester project |
 | 2026-04-29 | Tie-breaking: priority order list | Avoids 50/50 ambiguity; deterministic; configurable |
 | 2026-04-29 | Webcam: face-api.js client-side overlay, Rekognition cloud-side | Client-side for low-cost overlay; Rekognition for accuracy |
