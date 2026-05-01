@@ -1,7 +1,7 @@
 import { DynamoDBStreamEvent } from 'aws-lambda';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AttributeValue } from '@aws-sdk/client-dynamodb';
 
@@ -9,6 +9,7 @@ const ses = new SESClient({ region: process.env.REGION });
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.REGION }));
 
 const TABLE_NAME = process.env.TABLE_NAME!;
+const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME!;
 const SENDER_EMAIL = process.env.SENDER_EMAIL!;
 
 type EmotionTemplate = { subject: string; body: string };
@@ -76,17 +77,29 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
 
       const sentAt = new Date().toISOString();
 
-      await ddb.send(new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { submissionId },
-        UpdateExpression: 'SET emailSentAt = :t, templateUsed = :tmpl, #st = :done',
-        ExpressionAttributeNames: { '#st': 'status' },
-        ExpressionAttributeValues: {
-          ':t': sentAt,
-          ':tmpl': dominantEmotion,
-          ':done': 'email_sent',
-        },
-      }));
+      await Promise.all([
+        ddb.send(new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { submissionId },
+          UpdateExpression: 'SET emailSentAt = :t, templateUsed = :tmpl, #st = :done',
+          ExpressionAttributeNames: { '#st': 'status' },
+          ExpressionAttributeValues: {
+            ':t': sentAt,
+            ':tmpl': dominantEmotion,
+            ':done': 'email_sent',
+          },
+        })),
+        ddb.send(new PutCommand({
+          TableName: CAMPAIGNS_TABLE_NAME,
+          Item: {
+            submissionId,
+            email,
+            emailSentAt: sentAt,
+            templateUsed: dominantEmotion,
+            dominantEmotion,
+          },
+        })),
+      ]);
     } catch (err) {
       console.error(`Failed to send email for submission ${submissionId}:`, err);
       throw err;

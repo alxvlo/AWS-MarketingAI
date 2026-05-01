@@ -10,6 +10,7 @@ import * as path from 'path';
 
 interface MessagingStackProps extends cdk.StackProps {
   submissionsTable: dynamodb.Table;
+  campaignsTable: dynamodb.Table;
   senderEmail: string;
 }
 
@@ -20,7 +21,7 @@ export class MessagingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: MessagingStackProps) {
     super(scope, id, props);
 
-    const { submissionsTable, senderEmail } = props;
+    const { submissionsTable, campaignsTable, senderEmail } = props;
 
     // DLQ for failed email send events — catches both Lambda crashes and exhausted stream retries
     this.messagingDlq = new sqs.Queue(this, 'MessagingDlq', {
@@ -36,12 +37,14 @@ export class MessagingStack extends cdk.Stack {
       deadLetterQueue: this.messagingDlq,
       environment: {
         TABLE_NAME: submissionsTable.tableName,
+        CAMPAIGNS_TABLE_NAME: campaignsTable.tableName,
         SENDER_EMAIL: senderEmail,
         REGION: this.region,
       },
     });
 
     submissionsTable.grantReadWriteData(sendEmailFn);
+    campaignsTable.grantWriteData(sendEmailFn);
 
     sendEmailFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ses:SendEmail', 'ses:SendRawEmail'],
