@@ -31,14 +31,16 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const s3Key = `uploads/${submissionId}`;
     const ttl = Math.floor(Date.now() / 1000) + TTL_SECONDS;
 
+    // Note: presigned PUT URLs cannot enforce file size server-side (ContentLengthRange
+    // only works with presigned POST). Size and content type are validated post-upload
+    // in the inference Lambda via HeadObject before Rekognition is called.
     const presignedUrl = await getSignedUrl(
       s3,
       new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: s3Key,
         ContentType: contentType,
-        ContentLengthRange: [1, MAX_SIZE_BYTES],
-      } as any),
+      }),
       { expiresIn: 300 },
     );
 

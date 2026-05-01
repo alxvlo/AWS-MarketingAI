@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-04-29  
+**Last updated**: 2026-05-01  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -35,11 +35,11 @@ Addressing consultation feedback + known bugs from testing.
 - [ ] Fix CORS headers on presigned URL response if PUT to S3 is failing
 
 ### 2B — Input Validation & Robustness
-- [ ] Restrict accepted file types to JPEG, PNG, WEBP only (validate in URL Generator Lambda)
-- [ ] Add file size limit (max 5MB) in URL Generator Lambda
-- [ ] Return clear 400 error to frontend for invalid file types
+- [x] Restrict accepted file types to JPEG, PNG, WEBP only (validated post-upload in inference Lambda via HeadObject)
+- [x] Add file size limit (max 5MB) — enforced post-upload in inference Lambda; invalid files deleted from S3
+- [x] Return clear 400 error to frontend for invalid file types (presigned URL Lambda validates contentType field)
 - [ ] Implement tie-breaking for equal emotion scores (priority order: HAPPY > SURPRISED > CALM > NEUTRAL > SAD > ANGRY > FEARFUL; first in list wins)
-- [ ] Add dead-letter queues (DLQs) on async Lambdas (Rek Handler, SES Dispatcher)
+- [x] Add dead-letter queues (DLQs) on async Lambdas (Rek Handler, SES Dispatcher)
 - [ ] SES bounce/complaint handling
 
 ### 2C — Webcam Capture (Customer Portal UX)
@@ -52,8 +52,8 @@ Addressing consultation feedback + known bugs from testing.
 - [ ] Support fallback: manual file upload still available
 
 ### 2D — CI/CD
-- [ ] GitHub Actions + OIDC pipeline (cdk synth → test → cdk deploy on push to main)
-- [ ] No stored AWS credentials in GitHub secrets
+- [x] GitHub Actions + OIDC pipeline (cdk synth → test → cdk deploy on push to main)
+- [x] No stored AWS credentials in GitHub secrets — OIDC via GitHubActionsDeployRole
 
 ---
 
@@ -78,7 +78,7 @@ Professor confirmed this is required. Simplified from original over-engineered d
 ---
 
 ## 🔧 Phase 4: Polish & Observability
-- [ ] CloudWatch dashboard: Lambda errors, Rekognition latency, SES delivery rate
+- [x] CloudWatch dashboard: Lambda errors, invocations, duration (P50/P99), DLQ depth, SES delivery metrics — ObservabilityStack
 - [ ] SES domain verification — DKIM + SPF setup
 - [ ] CloudWatch Alarms → SNS alert to team Slack
 - [ ] Optional: A/B test scaffolding (same emotion, two offer variants)

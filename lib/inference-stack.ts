@@ -16,13 +16,16 @@ interface InferenceStackProps extends cdk.StackProps {
 }
 
 export class InferenceStack extends cdk.Stack {
+  public readonly inferenceDlq: sqs.Queue;
+  public readonly inferenceFunction: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: InferenceStackProps) {
     super(scope, id, props);
 
     const { imageBucket, submissionsTable } = props;
 
     // DLQ for failed inference events
-    const dlq = new sqs.Queue(this, 'InferenceDlq', {
+    this.inferenceDlq = new sqs.Queue(this, 'InferenceDlq', {
       retentionPeriod: cdk.Duration.days(14),
     });
 
@@ -32,7 +35,7 @@ export class InferenceStack extends cdk.Stack {
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(30),
-      deadLetterQueue: dlq,
+      deadLetterQueue: this.inferenceDlq,
       environment: {
         TABLE_NAME: submissionsTable.tableName,
         REGION: this.region,
@@ -40,6 +43,8 @@ export class InferenceStack extends cdk.Stack {
     });
 
     imageBucket.grantRead(inferenceFn);
+    // DeleteObject needed to remove invalid files (wrong type or oversized) post-upload
+    imageBucket.grantDelete(inferenceFn);
     submissionsTable.grantWriteData(inferenceFn);
 
     inferenceFn.addToRolePolicy(new iam.PolicyStatement({
@@ -60,5 +65,7 @@ export class InferenceStack extends cdk.Stack {
       },
       targets: [new targets.LambdaFunction(inferenceFn)],
     });
+
+    this.inferenceFunction = inferenceFn;
   }
 }

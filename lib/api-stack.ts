@@ -13,6 +13,8 @@ interface ApiStackProps extends cdk.StackProps {
 }
 
 export class ApiStack extends cdk.Stack {
+  public readonly getResultFunction: lambda.IFunction;
+
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
@@ -30,6 +32,7 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
+    this.getResultFunction = getResultFn;
     submissionsTable.grantReadData(getResultFn);
 
     const api = new apigateway.RestApi(this, 'ResultsApi', {

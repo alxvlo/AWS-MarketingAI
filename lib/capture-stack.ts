@@ -11,6 +11,7 @@ import * as path from 'path';
 export class CaptureStack extends cdk.Stack {
   public readonly imageBucket: s3.Bucket;
   public readonly submissionsTable: dynamodb.Table;
+  public readonly presignedUrlFunction: lambda.IFunction;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -64,6 +65,7 @@ export class CaptureStack extends cdk.Stack {
       },
     });
 
+    this.presignedUrlFunction = presignedUrlFn;
     this.imageBucket.grantPut(presignedUrlFn);
     this.submissionsTable.grantWriteData(presignedUrlFn);
 
