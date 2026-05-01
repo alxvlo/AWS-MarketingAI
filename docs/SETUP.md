@@ -97,11 +97,13 @@ cd AWS-MarketingAI
 
 ## Install Dependencies
 
+Install both the CDK/backend dependencies and the Next.js frontend dependencies:
+
 ```bash
-npm install
+npm run install:all
 ```
 
-This installs both the CDK library and all AWS SDK packages used by the Lambdas.
+This runs `npm install` at the root (CDK + AWS SDK) and then inside `frontend/` (Next.js + React + Tailwind).
 
 ---
 
@@ -133,7 +135,7 @@ This is a one-time setup per machine. If it's already been run before by someone
 cdk deploy --all
 ```
 
-This deploys all stacks (`SatisfactionMeterCapture`, `SatisfactionMeterInference`, `SatisfactionMeterMessaging`, `SatisfactionMeterApi`).
+This deploys all stacks (`SatisfactionMeterCapture`, `SatisfactionMeterInference`, `SatisfactionMeterMessaging`, `SatisfactionMeterApi`, `SatisfactionMeterAnalytics`, `SatisfactionMeterObservability`).
 
 To deploy a single stack:
 ```bash
@@ -141,6 +143,16 @@ cdk deploy SatisfactionMeterCapture
 ```
 
 After deployment, the terminal will print the API endpoint URLs. These are also saved in `cdk.out/deploy-outputs.json`.
+
+---
+
+## Running the Frontend Locally
+
+```bash
+npm run dev
+```
+
+This starts the Next.js dev server on `http://localhost:3000`.
 
 ---
 
@@ -157,11 +169,13 @@ After deployment, the terminal will print the API endpoint URLs. These are also 
 
 ### End-to-End Test
 
-1. Open `web/index.html` in your browser (or serve it locally).
-2. Enter `alexvelo199@gmail.com` as the recipient email — this is the verified SES address used for testing.
-3. Upload a photo with a visible face.
-4. Wait ~5 seconds. You should see the detected emotion and a confirmation that the email was sent.
-5. Check `alexvelo199@gmail.com` inbox for the marketing email.
+1. Start the dev server: `npm run dev`
+2. Open `http://localhost:3000` in your browser.
+3. Enter `alexvelo199@gmail.com` as the recipient email — this is the verified SES address used for testing.
+4. Allow camera access when prompted, or click **Upload a Photo** to use a local image.
+5. Click **Send for Analysis** and wait ~5 seconds. You should see the detected emotion and email status.
+6. Check `alexvelo199@gmail.com` inbox for the marketing email.
+7. For admin analytics, navigate to `http://localhost:3000/admin`.
 
 > SES is in sandbox mode. Only verified email addresses can receive emails. Do not use a different address for testing — it will silently fail.
 
@@ -192,17 +206,22 @@ Install build tools:
 
 ```
 AWS-MarketingAI/
-├── bin/                  # CDK app entry point
-├── lib/                  # CDK stack definitions
-│   ├── capture-stack.ts      # S3 bucket + presigned URL Lambda
-│   ├── inference-stack.ts    # Rekognition Lambda
-│   ├── messaging-stack.ts    # SES dispatch Lambda
-│   └── api-stack.ts          # GET /results endpoint
-├── lambdas/              # Lambda handler source files
-├── web/                  # Frontend HTML/JS
-├── docs/                 # roadmap.md, SETUP.md, presentation, architecture PDF
-├── scripts/              # Helper scripts (e.g. push-tickets.sh)
-└── CLAUDE.md             # AI assistant context (read by Claude)
+├── bin/                      # CDK app entry point
+├── lib/                      # CDK stack definitions
+│   ├── capture-stack.ts          # S3 bucket + presigned URL Lambda
+│   ├── inference-stack.ts        # Rekognition Lambda + DynamoDB + DLQ
+│   ├── messaging-stack.ts        # SES dispatch Lambda + DLQ
+│   ├── api-stack.ts              # GET /results endpoint
+│   ├── analytics-stack.ts        # Analytics Lambdas + campaigns table
+│   └── observability-stack.ts    # CloudWatch dashboard + alarms
+├── lambdas/                  # Lambda handler source files
+├── frontend/                 # Frontend: Next.js 16 + React 19 + Tailwind 4
+│   ├── app/                      # Pages (customer portal + admin)
+│   ├── components/               # WebcamFeed, FaceOverlay
+│   └── lib/                      # API client, mock analytics
+├── docs/                     # roadmap.md, SETUP.md, presentation, architecture PDF
+├── scripts/                  # Helper scripts (e.g. push-tickets.sh)
+└── CLAUDE.md                 # AI assistant context
 ```
 
 Read `docs/roadmap.md` to see what's been built, what's in progress, and what's next.
