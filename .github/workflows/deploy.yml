@@ -31,6 +31,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::860550672813:role/GitHubActionsDeployRole
           aws-region: ap-southeast-1
+          audience: sts.amazonaws.com
 
       - name: Validate CDK synthesis
         run: npx cdk synth
