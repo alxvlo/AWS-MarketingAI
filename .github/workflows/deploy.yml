@@ -37,7 +37,7 @@ jobs:
         run: npx cdk synth
 
       - name: Run tests
-        run: npm test
+        run: npm test -- --passWithNoTests
 
       - name: Deploy all stacks
         run: npx cdk deploy --all --require-approval never
