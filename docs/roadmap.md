@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-01  
+**Last updated**: 2026-05-01 (Phase 3B tickets synced)  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -67,19 +67,19 @@ Professor confirmed this is required. Simplified from original over-engineered d
 - [x] DynamoDB campaigns table: dual-written by send-email Lambda — `{submissionId, email, emailSentAt, templateUsed, dominantEmotion}`. Routes are open during 3A; Lambda Authorizer wired up in 3B.
 
 ### 3B — Admin Portal (Frontend + Auth)
-- [ ] API Gateway Lambda Authorizer — validates credentials from SSM Parameter Store
-- [ ] Admin login page (simple username/password, credentials in SSM)
-- [ ] Admin dashboard: emotion distribution chart (bar/pie)
-- [ ] Admin dashboard: submission volume over time (line chart)
-- [ ] Admin dashboard: campaign performance table (sent count per template)
-- [ ] Admin dashboard: trend forecasting display (simple moving average, 7-day)
-- [ ] Protect all /analytics/* endpoints behind Lambda Authorizer
+- [ ] API Gateway Lambda Authorizer — validates credentials from SSM Parameter Store (AWS-58)
+- [ ] Admin login page (simple username/password, credentials in SSM) (AWS-64)
+- [ ] Admin dashboard: emotion distribution chart (bar/pie) (AWS-65)
+- [ ] Admin dashboard: submission volume over time (line chart) (AWS-66)
+- [ ] Admin dashboard: campaign performance table (sent count per template) (AWS-67)
+- [ ] Admin dashboard: trend forecasting display (simple moving average, 7-day) (AWS-59)
+- [ ] Protect all /analytics/* endpoints behind Lambda Authorizer — CDK route wiring + 401 verification (AWS-69)
+- [ ] Wire admin dashboard frontend to real /analytics/* endpoints — replace `frontend/lib/mockAnalytics.ts` mock data with live fetch calls, pass Basic Auth header (AWS-70)
 
 ---
 
 ## 🔧 Phase 4: Polish & Observability
 - [x] CloudWatch dashboard: Lambda errors, invocations, duration (P50/P99), DLQ depth, SES delivery metrics — ObservabilityStack
-- [ ] SES domain verification — DKIM + SPF setup
 - [ ] CloudWatch Alarms → SNS alert to team Slack
 - [ ] Optional: A/B test scaffolding (same emotion, two offer variants)
 - [ ] Optional: Email frequency cap (deduplication — max 1 email per address per 24h)
@@ -97,6 +97,7 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-04-29 | Admin auth via Lambda Authorizer + SSM, not Cognito | One admin user; Cognito overkill for semester project |
 | 2026-04-29 | Tie-breaking: priority order list | Avoids 50/50 ambiguity; deterministic; configurable |
 | 2026-04-29 | Webcam: face-api.js client-side overlay, Rekognition cloud-side | Client-side for low-cost overlay; Rekognition for accuracy |
+| 2026-05-01 | SES stays in sandbox mode (no production access) | Production access requires a verified domain; not purchasing a domain for a semester project. Sandbox is sufficient — all demo recipients will be manually verified in the SES console. |
 | 2026-04-23 | SES only (no SMS/Pinpoint) | Cost and complexity not justified |
 | 2026-04-23 | GitHub Actions + OIDC over CodePipeline | Team is GitHub-native; no stored AWS creds |
 | 2026-04-23 | ap-southeast-1 region | Latency from PH; no data-residency constraints |
