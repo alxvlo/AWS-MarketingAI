@@ -10,6 +10,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
  * Layout:
  *   - Private S3 bucket (no public access)
  *   - CloudFront distribution with Origin Access Control (OAC) — modern replacement for OAI
+ *   - CloudFront Function rewrites /foo/ → /foo/index.html (S3 REST API doesn't auto-resolve directory indexes)
  *   - SPA-style 403/404 → /404.html so deep links resolve to Next's static 404 page
  *
  * The bucket is intentionally NOT in CaptureStack: customer-image and static-asset
@@ -32,6 +33,24 @@ export class WebStack extends cdk.Stack {
       enforceSSL: true,
     });
 
+    // CloudFront Functions run at the edge before the request hits S3.
+    // S3 REST API (used by OAC) does not serve directory indexes, so /admin/ would 403.
+    // This function appends index.html to any trailing-slash path.
+    const indexRewrite = new cloudfront.Function(this, 'IndexRewrite', {
+      code: cloudfront.FunctionCode.fromInline(`
+function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+  if (uri.endsWith('/')) {
+    request.uri = uri + 'index.html';
+  }
+  return request;
+}
+      `.trim()),
+      runtime: cloudfront.FunctionRuntime.JS_2_0,
+      comment: 'Rewrite /foo/ → /foo/index.html for S3 static hosting',
+    });
+
     this.distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(this.siteBucket),
@@ -39,6 +58,10 @@ export class WebStack extends cdk.Stack {
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
         compress: true,
+        functionAssociations: [{
+          function: indexRewrite,
+          eventType: cloudfront.FunctionEventType.VIEWER_REQUEST,
+        }],
       },
       defaultRootObject: 'index.html',
       // Next.js static export emits a 404.html. Map S3's 403 (which it returns for
