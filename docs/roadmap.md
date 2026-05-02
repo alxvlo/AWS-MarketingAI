@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-01 (Phase 3B tickets synced)  
+**Last updated**: 2026-05-02 (Phase 2E complete — CloudFront frontend hosting live at d1d3rdsk86mn4b.cloudfront.net)  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -56,6 +56,16 @@ Addressing consultation feedback + known bugs from testing.
 - [x] GitHub Actions + OIDC pipeline (cdk synth → test → cdk deploy on push to main)
 - [x] No stored AWS credentials in GitHub secrets — OIDC via GitHubActionsDeployRole
 
+### 2E — Frontend Hosting (CloudFront)
+- [x] Static export: `next.config.ts` with `output: "export"`, `trailingSlash: true`
+- [x] CDK `WebStack`: private S3 bucket + CloudFront distribution with OAC + CloudFront Function for subdirectory index rewrite (lib/web-stack.ts)
+- [x] GitHub Actions workflow `frontend-deploy.yml`: build → `aws s3 sync` → CloudFront invalidation
+- [x] Path filters on `deploy.yml` so backend deploys ignore `frontend/**`
+- [x] Extend GitHubActionsDeployRole with S3 write + cloudfront:CreateInvalidation
+- [x] Smoke test: `/`, `/admin/`, `/admin/dashboard/` all return 200 on CloudFront URL
+- [ ] Full end-to-end smoke test: webcam → upload → email flow on the CloudFront URL
+- [ ] (Optional follow-up) Tighten API Gateway + S3 image bucket CORS to the CloudFront origin
+
 ---
 
 ## 📊 Phase 3: Analytics Layer
@@ -102,3 +112,4 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-04-23 | SES only (no SMS/Pinpoint) | Cost and complexity not justified |
 | 2026-04-23 | GitHub Actions + OIDC over CodePipeline | Team is GitHub-native; no stored AWS creds |
 | 2026-04-23 | ap-southeast-1 region | Latency from PH; no data-residency constraints |
+| 2026-05-02 | Frontend hosted on CloudFront + S3, not Vercel | Stays inside the single AWS account (no extra vendor accounts), keeps the project AWS-native per CLAUDE.md, and CloudFront's "always free" 1TB/month tier covers expected traffic. Static export is sufficient — no SSR/ISR needed. |

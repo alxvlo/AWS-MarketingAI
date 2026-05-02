@@ -7,6 +7,7 @@ import { InferenceStack } from '../lib/inference-stack';
 import { MessagingStack } from '../lib/messaging-stack';
 import { ApiStack } from '../lib/api-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
+import { WebStack } from '../lib/web-stack';
 
 const app = new cdk.App();
 
@@ -29,7 +30,7 @@ const messagingStack = new MessagingStack(app, 'SatisfactionMeterMessaging', {
   env,
   submissionsTable: captureStack.submissionsTable,
   campaignsTable: analyticsStack.campaignsTable,
-  senderEmail: 'alexvelo199@gmail.com',
+  senderEmail: 'noreply@satisfactionmeter.live',
 });
 
 const apiStack = new ApiStack(app, 'SatisfactionMeterApi', {
@@ -47,6 +48,8 @@ new ObservabilityStack(app, 'SatisfactionMeterObservability', {
   inferenceDlq: inferenceStack.inferenceDlq,
   messagingDlq: messagingStack.messagingDlq,
 });
+
+new WebStack(app, 'SatisfactionMeterWeb', { env });
 
 // explicit ordering so CDK deploys in the right sequence
 analyticsStack.addDependency(captureStack);

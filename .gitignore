@@ -17,3 +17,7 @@ frontend/next-env.d.ts
 frontend/*.tsbuildinfo
 frontend/coverage/
 frontend/.vercel/
+
+# Local environment variables (never commit)
+frontend/.env.local
+frontend/.env*.local
