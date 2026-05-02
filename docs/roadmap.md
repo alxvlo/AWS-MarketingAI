@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-02 (Phase 2E added — CloudFront frontend hosting)  
+**Last updated**: 2026-05-02 (Phase 2E complete — CloudFront frontend hosting live at d1d3rdsk86mn4b.cloudfront.net)  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -58,11 +58,12 @@ Addressing consultation feedback + known bugs from testing.
 
 ### 2E — Frontend Hosting (CloudFront)
 - [x] Static export: `next.config.ts` with `output: "export"`, `trailingSlash: true`
-- [x] CDK `WebStack`: private S3 bucket + CloudFront distribution with OAC (lib/web-stack.ts)
+- [x] CDK `WebStack`: private S3 bucket + CloudFront distribution with OAC + CloudFront Function for subdirectory index rewrite (lib/web-stack.ts)
 - [x] GitHub Actions workflow `frontend-deploy.yml`: build → `aws s3 sync` → CloudFront invalidation
 - [x] Path filters on `deploy.yml` so backend deploys ignore `frontend/**`
 - [x] Extend GitHubActionsDeployRole with S3 write + cloudfront:CreateInvalidation
-- [ ] Smoke test: webcam → upload → email flow on the CloudFront URL
+- [x] Smoke test: `/`, `/admin/`, `/admin/dashboard/` all return 200 on CloudFront URL
+- [ ] Full end-to-end smoke test: webcam → upload → email flow on the CloudFront URL
 - [ ] (Optional follow-up) Tighten API Gateway + S3 image bucket CORS to the CloudFront origin
 
 ---
