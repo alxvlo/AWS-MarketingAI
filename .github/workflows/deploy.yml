@@ -3,6 +3,10 @@ name: Deploy
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'frontend/**'
+      - 'docs/**'
+      - '*.md'
 
 permissions:
   id-token: write   # Required for OIDC — allows GitHub to request an AWS token
