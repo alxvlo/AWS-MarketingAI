@@ -5,10 +5,18 @@
  * These are the only two API endpoints in the live system.
  */
 
-const UPLOAD_API =
-  "https://bj0iusoe6a.execute-api.ap-southeast-1.amazonaws.com/prod/upload";
-const RESULTS_API =
-  "https://axxsy44fvk.execute-api.ap-southeast-1.amazonaws.com/prod/results";
+if (
+  typeof window !== "undefined" &&
+  process.env.NODE_ENV === "production" &&
+  (!process.env.NEXT_PUBLIC_UPLOAD_API || !process.env.NEXT_PUBLIC_RESULTS_API)
+) {
+  throw new Error(
+    "NEXT_PUBLIC_UPLOAD_API and NEXT_PUBLIC_RESULTS_API must be set in production."
+  );
+}
+
+const UPLOAD_API = process.env.NEXT_PUBLIC_UPLOAD_API!;
+const RESULTS_API = process.env.NEXT_PUBLIC_RESULTS_API!;
 
 export interface PresignedUrlResponse {
   submissionId: string;
