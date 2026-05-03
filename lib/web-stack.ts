@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 
 /**
  * Hosts the Next.js static export at frontend/out/.
@@ -51,7 +52,14 @@ function handler(event) {
       comment: 'Rewrite /foo/ → /foo/index.html for S3 static hosting',
     });
 
+    // ACM cert must live in us-east-1 — CloudFront requirement regardless of app region.
+    const cert = acm.Certificate.fromCertificateArn(this, 'SiteCert',
+      'arn:aws:acm:us-east-1:860550672813:certificate/f789f3f1-c9a8-4551-ad7d-5366b9df30fa',
+    );
+
     this.distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
+      domainNames: ['satisfactionmeter.live', 'www.satisfactionmeter.live'],
+      certificate: cert,
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessControl(this.siteBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
