@@ -66,7 +66,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
 function respond(statusCode: number, body: object): APIGatewayProxyResult {
   return {
     statusCode,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
     body: JSON.stringify(body),
   };
 }
