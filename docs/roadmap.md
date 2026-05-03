@@ -40,7 +40,7 @@ Addressing consultation feedback + known bugs from testing.
 - [x] Return clear 400 error to frontend for invalid file types (presigned URL Lambda validates contentType field)
 - [ ] Implement tie-breaking for equal emotion scores (priority order: HAPPY > SURPRISED > CALM > NEUTRAL > SAD > ANGRY > FEARFUL; first in list wins)
 - [x] Add dead-letter queues (DLQs) on async Lambdas (Rek Handler, SES Dispatcher)
-- [ ] SES bounce/complaint handling
+- [ ] SES bounce/complaint handling — SNS topic for bounces/complaints → Lambda to log and suppress offending addresses (required now that production access is in progress)
 
 ### 2C — Webcam Capture (Customer Portal UX)
 - [x] Add webcam feed to customer portal (`frontend/app/page.tsx`)
@@ -63,8 +63,13 @@ Addressing consultation feedback + known bugs from testing.
 - [x] Path filters on `deploy.yml` so backend deploys ignore `frontend/**`
 - [x] Extend GitHubActionsDeployRole with S3 write + cloudfront:CreateInvalidation
 - [x] Smoke test: `/`, `/admin/`, `/admin/dashboard/` all return 200 on CloudFront URL
+- [x] Add 3 DKIM CNAMEs at name.com for SES domain verification (`satisfactionmeter.live`)
+- [x] Verify sender email `noreply@satisfactionmeter.live` in SES console (ap-southeast-1)
+- [x] Request ACM cert in `us-east-1` for `satisfactionmeter.live` (DNS validated, cert issued)
+- [x] Attach ACM cert to CloudFront distribution + configure apex domain alias (`satisfactionmeter.live`)
+- [ ] Confirm SES production access approval from AWS (request submitted 2026-05-02; ~24-48h)
 - [ ] Full end-to-end smoke test: webcam → upload → email flow on the CloudFront URL
-- [ ] (Optional follow-up) Tighten API Gateway + S3 image bucket CORS to the CloudFront origin
+- [ ] Tighten API Gateway + S3 image bucket CORS from `*` to the CloudFront origin (`satisfactionmeter.live`)
 
 ---
 
@@ -108,7 +113,11 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-04-29 | Admin auth via Lambda Authorizer + SSM, not Cognito | One admin user; Cognito overkill for semester project |
 | 2026-04-29 | Tie-breaking: priority order list | Avoids 50/50 ambiguity; deterministic; configurable |
 | 2026-04-29 | Webcam: face-api.js client-side overlay, Rekognition cloud-side | Client-side for low-cost overlay; Rekognition for accuracy |
-| 2026-05-01 | SES stays in sandbox mode (no production access) | Production access requires a verified domain; not purchasing a domain for a semester project. Sandbox is sufficient — all demo recipients will be manually verified in the SES console. |
+| 2026-05-01 | SES sandbox — prior decision | Was: no domain, sandbox only. **Superseded 2026-05-02** by domain acquisition. See rows below. |
+| 2026-05-02 | Domain `satisfactionmeter.live` acquired at name.com | Enables SES production access request and custom CloudFront apex domain |
+| 2026-05-02 | SES production access request submitted | Removes manually-verified-only limit once AWS approves (~24-48h). Sender: `noreply@satisfactionmeter.live` |
+| 2026-05-02 | ACM cert issued in `us-east-1` (not ap-southeast-1) | CloudFront requires certs in us-east-1 regardless of app region — single approved cross-region resource |
+| 2026-05-02 | Custom apex domain `satisfactionmeter.live` configured on CloudFront | DKIM CNAMEs added at name.com; ACM cert attached to distribution; apex domain live |
 | 2026-04-23 | SES only (no SMS/Pinpoint) | Cost and complexity not justified |
 | 2026-04-23 | GitHub Actions + OIDC over CodePipeline | Team is GitHub-native; no stored AWS creds |
 | 2026-04-23 | ap-southeast-1 region | Latency from PH; no data-residency constraints |
