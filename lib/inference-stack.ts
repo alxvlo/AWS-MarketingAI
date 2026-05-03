@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as events from 'aws-cdk-lib/aws-events';
@@ -29,6 +30,11 @@ export class InferenceStack extends cdk.Stack {
       retentionPeriod: cdk.Duration.days(14),
     });
 
+    const inferenceLogGroup = new logs.LogGroup(this, 'InferenceLogGroup', {
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // Lambda: triggered by S3 PUT → Rekognition → writes emotion to DynamoDB
     const inferenceFn = new NodejsFunction(this, 'InferenceFunction', {
       entry: path.join(__dirname, '../lambdas/inference/index.ts'),
@@ -36,6 +42,7 @@ export class InferenceStack extends cdk.Stack {
       runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(30),
       deadLetterQueue: this.inferenceDlq,
+      logGroup: inferenceLogGroup,
       environment: {
         TABLE_NAME: submissionsTable.tableName,
         REGION: this.region,
