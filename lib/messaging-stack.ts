@@ -28,6 +28,15 @@ export class MessagingStack extends cdk.Stack {
       retentionPeriod: cdk.Duration.days(14),
     });
 
+    // Frequency cap table: suppresses repeat sends to the same email within a 24h window.
+    // TTL on `ttl` attribute auto-expires entries so DynamoDB stays small without manual cleanup.
+    const freqCapTable = new dynamodb.Table(this, 'EmailFrequencyCapTable', {
+      partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'ttl',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     // Lambda: reads emotion from DynamoDB stream → sends SES email → writes back emailSentAt
     const sendEmailFn = new NodejsFunction(this, 'SendEmailFunction', {
       entry: path.join(__dirname, '../lambdas/send-email/index.ts'),
@@ -40,11 +49,13 @@ export class MessagingStack extends cdk.Stack {
         CAMPAIGNS_TABLE_NAME: campaignsTable.tableName,
         SENDER_EMAIL: senderEmail,
         REGION: this.region,
+        FREQ_CAP_TABLE_NAME: freqCapTable.tableName,
       },
     });
 
     submissionsTable.grantReadWriteData(sendEmailFn);
     campaignsTable.grantWriteData(sendEmailFn);
+    freqCapTable.grantReadWriteData(sendEmailFn);
 
     sendEmailFn.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ses:SendEmail', 'ses:SendRawEmail'],

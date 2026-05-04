@@ -1,7 +1,7 @@
 import { DynamoDBStreamEvent } from 'aws-lambda';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AttributeValue } from '@aws-sdk/client-dynamodb';
 
@@ -11,6 +11,8 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env
 const TABLE_NAME = process.env.TABLE_NAME!;
 const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME!;
 const SENDER_EMAIL = process.env.SENDER_EMAIL!;
+const FREQ_CAP_TABLE_NAME = process.env.FREQ_CAP_TABLE_NAME!;
+const FREQ_CAP_SECONDS = 24 * 60 * 60;
 
 type EmotionTemplate = { subject: string; body: string };
 
@@ -95,6 +97,15 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
     const { submissionId, email, dominantEmotion } = item;
     if (!email || !submissionId) continue;
 
+    const capCheck = await ddb.send(new GetCommand({
+      TableName: FREQ_CAP_TABLE_NAME,
+      Key: { email },
+    }));
+    if (capCheck.Item) {
+      console.log(`Suppressed duplicate email to ${email} — within 24h cap window.`);
+      continue;
+    }
+
     const variant = Math.random() < 0.5 ? 'v1' : 'v2';
     const templateKey = `${dominantEmotion}_${variant}`;
     const template = TEMPLATES[templateKey] ?? DEFAULT_TEMPLATE;
@@ -131,6 +142,14 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
             emailSentAt: sentAt,
             templateUsed: templateKey,
             dominantEmotion,
+          },
+        })),
+        ddb.send(new PutCommand({
+          TableName: FREQ_CAP_TABLE_NAME,
+          Item: {
+            email,
+            sentAt,
+            ttl: Math.floor(Date.now() / 1000) + FREQ_CAP_SECONDS,
           },
         })),
       ]);
