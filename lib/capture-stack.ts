@@ -79,7 +79,17 @@ export class CaptureStack extends cdk.Stack {
     });
 
     const uploadResource = api.root.addResource('upload');
-    uploadResource.addMethod('POST', new apigateway.LambdaIntegration(presignedUrlFn));
+    uploadResource.addMethod('POST', new apigateway.LambdaIntegration(presignedUrlFn), {
+      apiKeyRequired: true,
+    });
+
+    const apiKey = api.addApiKey('DemoApiKey');
+    const usagePlan = api.addUsagePlan('DemoUsagePlan', {
+      throttle: { rateLimit: 10, burstLimit: 20 },
+      quota: { limit: 500, period: apigateway.Period.DAY },
+    });
+    usagePlan.addApiKey(apiKey);
+    usagePlan.addApiStage({ stage: api.deploymentStage });
 
     new cdk.CfnOutput(this, 'UploadApiUrl', {
       value: `${api.url}upload`,
@@ -92,6 +102,11 @@ export class CaptureStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'SubmissionsTableName', {
       value: this.submissionsTable.tableName,
+    });
+
+    new cdk.CfnOutput(this, 'DemoApiKeyId', {
+      value: apiKey.keyId,
+      description: 'API Gateway key ID — retrieve value with: aws apigateway get-api-key --api-key <id> --include-value --region ap-southeast-1',
     });
   }
 }

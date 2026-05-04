@@ -45,7 +45,10 @@ export async function requestPresignedUrl(
 ): Promise<PresignedUrlResponse> {
   const res = await fetch(UPLOAD_API, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.NEXT_PUBLIC_API_KEY ?? "",
+    },
     body: JSON.stringify({ email, contentType, fileSize }),
   });
 
