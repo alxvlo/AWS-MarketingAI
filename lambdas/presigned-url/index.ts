@@ -18,7 +18,7 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
     const body = JSON.parse(event.body ?? '{}');
-    const { email, contentType } = body as { email?: string; contentType?: string };
+    const { email, contentType, fileSize } = body as { email?: string; contentType?: string; fileSize?: unknown };
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return respond(400, { message: 'Valid email is required.' });
@@ -26,14 +26,17 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     if (!contentType || !ALLOWED_CONTENT_TYPES.includes(contentType)) {
       return respond(400, { message: `contentType must be one of: ${ALLOWED_CONTENT_TYPES.join(', ')}` });
     }
+    if (typeof fileSize !== 'number' || fileSize <= 0) {
+      return respond(400, { message: 'fileSize must be a positive number.' });
+    }
+    if (fileSize > MAX_SIZE_BYTES) {
+      return respond(400, { message: 'File size must not exceed 5 MB.' });
+    }
 
     const submissionId = randomUUID();
     const s3Key = `uploads/${submissionId}`;
     const ttl = Math.floor(Date.now() / 1000) + TTL_SECONDS;
 
-    // Note: presigned PUT URLs cannot enforce file size server-side (ContentLengthRange
-    // only works with presigned POST). Size and content type are validated post-upload
-    // in the inference Lambda via HeadObject before Rekognition is called.
     const presignedUrl = await getSignedUrl(
       s3,
       new PutObjectCommand({

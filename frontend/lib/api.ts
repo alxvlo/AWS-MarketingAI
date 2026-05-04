@@ -40,12 +40,13 @@ export interface SubmissionResult {
  */
 export async function requestPresignedUrl(
   email: string,
-  contentType: string
+  contentType: string,
+  fileSize: number
 ): Promise<PresignedUrlResponse> {
   const res = await fetch(UPLOAD_API, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, contentType }),
+    body: JSON.stringify({ email, contentType, fileSize }),
   });
 
   if (!res.ok) {
@@ -111,7 +112,8 @@ export async function submitPhoto(
   onStatus("Requesting upload URL…");
   const { submissionId, uploadUrl } = await requestPresignedUrl(
     email,
-    image.type
+    image.type,
+    image.size
   );
   onStatus(`Upload URL received (submission: ${submissionId})`);
 
