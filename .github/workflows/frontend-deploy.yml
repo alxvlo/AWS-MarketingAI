@@ -22,6 +22,7 @@ jobs:
     env:
       NEXT_PUBLIC_UPLOAD_API: ${{ vars.NEXT_PUBLIC_UPLOAD_API }}
       NEXT_PUBLIC_RESULTS_API: ${{ vars.NEXT_PUBLIC_RESULTS_API }}
+      NEXT_PUBLIC_API_KEY: ${{ secrets.NEXT_PUBLIC_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
