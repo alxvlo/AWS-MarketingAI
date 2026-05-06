@@ -4,6 +4,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
+import { log } from '../shared/logger';
 
 const s3 = new S3Client({ region: process.env.REGION });
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.REGION }));
@@ -16,24 +17,34 @@ const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  let submissionId = '';
   try {
     const body = JSON.parse(event.body ?? '{}');
     const { email, contentType, fileSize } = body as { email?: string; contentType?: string; fileSize?: unknown };
 
+    log('INFO', 'presigned-url', 'upload_requested', '', {
+      contentType: contentType ?? '',
+      emailMasked: email ? email.replace(/(.{2}).+(@.+)/, '$1***$2') : '',
+    });
+
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      log('WARN', 'presigned-url', 'validation_failed', '', { reason: 'invalid_email' });
       return respond(400, { message: 'Valid email is required.' });
     }
     if (!contentType || !ALLOWED_CONTENT_TYPES.includes(contentType)) {
+      log('WARN', 'presigned-url', 'validation_failed', '', { reason: 'invalid_content_type', contentType });
       return respond(400, { message: `contentType must be one of: ${ALLOWED_CONTENT_TYPES.join(', ')}` });
     }
     if (typeof fileSize !== 'number' || fileSize <= 0) {
+      log('WARN', 'presigned-url', 'validation_failed', '', { reason: 'invalid_file_size' });
       return respond(400, { message: 'fileSize must be a positive number.' });
     }
     if (fileSize > MAX_SIZE_BYTES) {
+      log('WARN', 'presigned-url', 'validation_failed', '', { reason: 'file_too_large', fileSize });
       return respond(400, { message: 'File size must not exceed 5 MB.' });
     }
 
-    const submissionId = randomUUID();
+    submissionId = randomUUID();
     const s3Key = `uploads/${submissionId}`;
     const ttl = Math.floor(Date.now() / 1000) + TTL_SECONDS;
 
@@ -59,9 +70,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       },
     }));
 
+    log('INFO', 'presigned-url', 'submission_created', submissionId, { s3Key });
+
     return respond(200, { submissionId, uploadUrl: presignedUrl });
   } catch (err) {
-    console.error(err);
+    log('ERROR', 'presigned-url', 'upload_error', submissionId, { error: (err as Error).message });
     return respond(500, { message: 'Internal server error.' });
   }
 };

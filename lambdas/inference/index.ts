@@ -3,6 +3,7 @@ import { RekognitionClient, DetectFacesCommand } from '@aws-sdk/client-rekogniti
 import { S3Client, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { log } from '../shared/logger';
 
 const rekognition = new RekognitionClient({ region: process.env.REGION });
 const s3 = new S3Client({ region: process.env.REGION });
@@ -24,52 +25,59 @@ const submissionIdFromKey = (key: string) => key.split('/')[1];
 export const handler = async (
   event: EventBridgeEvent<'Object Created', S3ObjectCreatedDetail>,
 ): Promise<void> => {
+  const start = Date.now();
   const bucket = event.detail.bucket.name;
   const key = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));
   const submissionId = submissionIdFromKey(key);
 
-  console.log(JSON.stringify({ event: 's3EventReceived', detail: event.detail }));
-  console.log(JSON.stringify({ event: 'objectExtracted', bucket, key, submissionId }));
-
   if (!submissionId) {
-    console.warn('Could not derive submissionId from key:', key);
+    log('WARN', 'inference', 'no_face_detected', '', { reason: 'could_not_derive_submission_id', key });
     return;
   }
 
-  // Server-side validation: check file size and content type from S3 object metadata
-  // The presigned PUT URL cannot enforce these constraints, so we validate post-upload
-  const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
-  const contentType = head.ContentType ?? '';
-  const contentLength = head.ContentLength ?? 0;
+  try {
+    // Server-side validation: check file size and content type from S3 object metadata
+    // The presigned PUT URL cannot enforce these constraints, so we validate post-upload
+    const head = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    const contentType = head.ContentType ?? '';
+    const contentLength = head.ContentLength ?? 0;
 
-  if (!ALLOWED_CONTENT_TYPES.includes(contentType) || contentLength > MAX_SIZE_BYTES) {
-    console.warn('Invalid file rejected:', { contentType, contentLength, submissionId });
-    await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-    await writeResult(submissionId, 'invalid_file', {});
-    return;
+    if (!ALLOWED_CONTENT_TYPES.includes(contentType) || contentLength > MAX_SIZE_BYTES) {
+      log('WARN', 'inference', 'no_face_detected', submissionId, { reason: 'invalid_file', contentType, contentLength });
+      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      await writeResult(submissionId, 'invalid_file', {});
+      return;
+    }
+
+    log('INFO', 'inference', 'rekognition_called', submissionId, { bucket, key });
+    const result = await rekognition.send(new DetectFacesCommand({
+      Image: { S3Object: { Bucket: bucket, Name: key } },
+      Attributes: ['ALL'],
+    }));
+
+    const face = result.FaceDetails?.[0];
+    if (!face?.Emotions?.length) {
+      log('WARN', 'inference', 'no_face_detected', submissionId);
+      await writeResult(submissionId, 'no_face_detected', {});
+      return;
+    }
+
+    const sorted = [...face.Emotions].sort((a, b) => (b.Confidence ?? 0) - (a.Confidence ?? 0));
+    const dominant = (sorted[0].Type as string).toLowerCase();
+    const emotionScores = Object.fromEntries(
+      sorted.map(e => [(e.Type as string).toLowerCase(), Number((e.Confidence ?? 0).toFixed(2))]),
+    );
+
+    log('INFO', 'inference', 'emotion_detected', submissionId, {
+      dominantEmotion: dominant,
+      topScore: emotionScores[dominant],
+    }, Date.now() - start);
+
+    await writeResult(submissionId, dominant, emotionScores);
+  } catch (err) {
+    log('ERROR', 'inference', 'inference_error', submissionId, { error: (err as Error).message });
+    throw err;
   }
-
-  console.log(JSON.stringify({ event: 'rekognitionCall', bucket, key }));
-  const result = await rekognition.send(new DetectFacesCommand({
-    Image: { S3Object: { Bucket: bucket, Name: key } },
-    Attributes: ['ALL'],
-  }));
-
-  const face = result.FaceDetails?.[0];
-  if (!face?.Emotions?.length) {
-    await writeResult(submissionId, 'no_face_detected', {});
-    return;
-  }
-
-  const sorted = [...face.Emotions].sort((a, b) => (b.Confidence ?? 0) - (a.Confidence ?? 0));
-  const dominant = (sorted[0].Type as string).toLowerCase();
-  const emotionScores = Object.fromEntries(
-    sorted.map(e => [(e.Type as string).toLowerCase(), Number((e.Confidence ?? 0).toFixed(2))]),
-  );
-
-  console.log(JSON.stringify({ event: 'rekognitionResponse', submissionId, dominant, emotionScores }));
-
-  await writeResult(submissionId, dominant, emotionScores);
 };
 
 async function writeResult(submissionId: string, dominantEmotion: string, emotionScores: Record<string, number>) {
