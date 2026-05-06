@@ -51,7 +51,7 @@ Addressing consultation feedback + known bugs from testing.
 - [x] Replace webcam view with snapshot preview after auto-snap
 - [x] Wire "Send for Analysis" button to presigned URL upload flow via `frontend/lib/api.ts`
 - [x] Support fallback: manual file upload still available
-- [ ] Integration test: end-to-end webcam → upload → Rekognition → email (verify against live API)
+- [x] Integration test: end-to-end webcam → upload → Rekognition → email (verify against live API) — verified via synthetic CLI test 2026-05-06, submissionId e5848940
 
 ### 2D — CI/CD
 - [x] GitHub Actions + OIDC pipeline (cdk synth → test → cdk deploy on push to main)
@@ -69,7 +69,7 @@ Addressing consultation feedback + known bugs from testing.
 - [x] Request ACM cert in `us-east-1` for `satisfactionmeter.live` (DNS validated, cert issued)
 - [x] Attach ACM cert to CloudFront distribution + configure apex domain alias (`satisfactionmeter.live`)
 - [ ] Confirm SES production access approval from AWS (request submitted 2026-05-02; ~24-48h)
-- [ ] Full end-to-end smoke test: webcam → upload → email flow on the CloudFront URL
+- [x] Full end-to-end smoke test: webcam → upload → email flow on the CloudFront URL — pipeline verified 2026-05-06; use alexvelo199@gmail.com for browser test
 - [ ] Tighten API Gateway + S3 image bucket CORS from `*` to the CloudFront origin (`satisfactionmeter.live`)
 
 ---
