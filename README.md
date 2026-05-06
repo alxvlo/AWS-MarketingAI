@@ -292,6 +292,21 @@ After deployment, the terminal prints the API endpoint URLs. These are also save
 
 ---
 
+## Local Development
+
+To run the frontend locally against the live deployed API:
+
+```bash
+cd frontend
+cp .env.local.example .env.local
+npm install
+npm run dev
+```
+
+Then open `http://localhost:3000`. The `.env.local` file points at the live deployed endpoints in `ap-southeast-1` — no local AWS emulation needed. `.env.local` is gitignored and must not be committed.
+
+---
+
 ## Testing the Full Pipeline
 
 1. Start the development server from the project root:
