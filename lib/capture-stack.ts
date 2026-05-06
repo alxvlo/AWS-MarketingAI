@@ -78,17 +78,9 @@ export class CaptureStack extends cdk.Stack {
     });
 
     const uploadResource = api.root.addResource('upload');
-    uploadResource.addMethod('POST', new apigateway.LambdaIntegration(presignedUrlFn), {
-      apiKeyRequired: true,
-    });
-
-    const apiKey = api.addApiKey('DemoApiKey');
-    const usagePlan = api.addUsagePlan('DemoUsagePlan', {
-      throttle: { rateLimit: 10, burstLimit: 20 },
-      quota: { limit: 500, period: apigateway.Period.DAY },
-    });
-    usagePlan.addApiKey(apiKey);
-    usagePlan.addApiStage({ stage: api.deploymentStage });
+    // No API key: this is a public browser-facing endpoint — embedding a key in client JS
+    // would expose it to anyone. Rate limiting is handled by API Gateway's default stage throttle.
+    uploadResource.addMethod('POST', new apigateway.LambdaIntegration(presignedUrlFn));
 
     new cdk.CfnOutput(this, 'UploadApiUrl', {
       value: `${api.url}upload`,
@@ -101,11 +93,6 @@ export class CaptureStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'SubmissionsTableName', {
       value: this.submissionsTable.tableName,
-    });
-
-    new cdk.CfnOutput(this, 'DemoApiKeyId', {
-      value: apiKey.keyId,
-      description: 'API Gateway key ID — retrieve value with: aws apigateway get-api-key --api-key <id> --include-value --region ap-southeast-1',
     });
   }
 }
