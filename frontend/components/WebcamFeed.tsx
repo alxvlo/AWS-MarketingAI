@@ -163,6 +163,8 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
     if (!imageBlob) return;
     if (!email.trim()) {
       setUploadError("Please enter your email address before submitting.");
+      setUploadState("error");
+      document.getElementById("email")?.focus();
       return;
     }
     setUploadState("uploading");
@@ -411,7 +413,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={uploadState === "uploading" || !email.trim()}
+                disabled={uploadState === "uploading"}
                 className="flex-1 rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
@@ -497,7 +499,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
             <div className="mt-3 flex flex-col gap-2">
               <button
                 onClick={handleSubmit}
-                disabled={uploadState === "uploading" || !email.trim()}
+                disabled={uploadState === "uploading"}
                 className="w-full rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
