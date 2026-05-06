@@ -29,8 +29,9 @@ Full pipeline smoke-tested and verified.
 Addressing consultation feedback + known bugs from testing.
 
 ### 2A — Image Pipeline Fix (BLOCKER)
-- [ ] **[NEEDS REDEPLOY]** Backend capture stack is running stale code (requires x-api-key header + deprecated fileSize field). All recent commits were frontend-only so `deploy.yml` never fired. Push a non-frontend/non-docs commit to main to trigger CDK redeploy and sync deployed stack with current repo code. See `docs/smoke-test-2026-05-06.md`.
-- [ ] Validate image actually lands in S3 and triggers EventBridge/Lambda (blocked until redeploy)
+- [x] **Backend capture stack redeployed** — removed stale API key requirement from API Gateway; upload endpoint now returns HTTP 200 + presigned URL without x-api-key header (2026-05-06). See `docs/smoke-test-2026-05-06.md`.
+- [x] **Frontend api.ts aligned** — removed dead x-api-key header; fileSize already correctly passed from image.size (2026-05-06).
+- [ ] Validate image actually lands in S3 and triggers EventBridge/Lambda (pending live test)
 - [ ] Add CloudWatch logging to Rek Handler Lambda to confirm S3 key received
 - [ ] Fix CORS headers on presigned URL response if PUT to S3 is failing
 
