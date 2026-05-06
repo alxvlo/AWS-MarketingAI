@@ -4,6 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, UpdateCommand, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AttributeValue } from '@aws-sdk/client-dynamodb';
+import { log } from '../shared/logger';
 
 const ses = new SESClient({ region: process.env.REGION });
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env.REGION }));
@@ -13,6 +14,8 @@ const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME!;
 const SENDER_EMAIL = process.env.SENDER_EMAIL!;
 const FREQ_CAP_TABLE_NAME = process.env.FREQ_CAP_TABLE_NAME!;
 const FREQ_CAP_SECONDS = 24 * 60 * 60;
+
+const SKIP_EMOTIONS = new Set(['no_face_detected', 'invalid_file']);
 
 type EmotionTemplate = { subject: string; body: string };
 
@@ -97,12 +100,19 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
     const { submissionId, email, dominantEmotion } = item;
     if (!email || !submissionId) continue;
 
+    if (SKIP_EMOTIONS.has(dominantEmotion)) {
+      log('INFO', 'send-email', 'email_skipped_no_face', submissionId);
+      continue;
+    }
+
     const capCheck = await ddb.send(new GetCommand({
       TableName: FREQ_CAP_TABLE_NAME,
       Key: { email },
     }));
     if (capCheck.Item) {
-      console.log(`Suppressed duplicate email to ${email} — within 24h cap window.`);
+      log('INFO', 'send-email', 'email_suppressed_freq_cap', submissionId, {
+        emailMasked: email.replace(/(.{2}).+(@.+)/, '$1***$2'),
+      });
       continue;
     }
 
@@ -111,6 +121,25 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
     const template = TEMPLATES[templateKey] ?? DEFAULT_TEMPLATE;
 
     try {
+      // Step A — Claim emailSentAt atomically before touching SES
+      log('INFO', 'send-email', 'email_claim_attempted', submissionId);
+      try {
+        await ddb.send(new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { submissionId },
+          UpdateExpression: 'SET emailSentAt = :t',
+          ConditionExpression: 'attribute_not_exists(emailSentAt)',
+          ExpressionAttributeValues: { ':t': new Date().toISOString() },
+        }));
+      } catch (claimErr: any) {
+        if (claimErr.name === 'ConditionalCheckFailedException') {
+          log('INFO', 'send-email', 'email_already_claimed', submissionId);
+          continue;
+        }
+        throw claimErr;
+      }
+
+      // Step B — Send email via SES
       await ses.send(new SendEmailCommand({
         Source: SENDER_EMAIL,
         Destination: { ToAddresses: [email] },
@@ -120,16 +149,18 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
         },
       }));
 
+      log('INFO', 'send-email', 'email_sent', submissionId, { templateUsed: templateKey });
+
       const sentAt = new Date().toISOString();
 
+      // Step C — Enrich record; emailSentAt already written by claim
       await Promise.all([
         ddb.send(new UpdateCommand({
           TableName: TABLE_NAME,
           Key: { submissionId },
-          UpdateExpression: 'SET emailSentAt = :t, templateUsed = :tmpl, #st = :done',
+          UpdateExpression: 'SET templateUsed = :tmpl, #st = :done',
           ExpressionAttributeNames: { '#st': 'status' },
           ExpressionAttributeValues: {
-            ':t': sentAt,
             ':tmpl': templateKey,
             ':done': 'email_sent',
           },
@@ -154,7 +185,18 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
         })),
       ]);
     } catch (err) {
-      console.error(`Failed to send email for submission ${submissionId}:`, err);
+      log('ERROR', 'send-email', 'email_error', submissionId, { error: (err as Error).message, errorName: (err as Error).name });
+      try {
+        await ddb.send(new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { submissionId },
+          UpdateExpression: 'SET #st = :failed',
+          ExpressionAttributeNames: { '#st': 'status' },
+          ExpressionAttributeValues: { ':failed': 'email_failed' },
+        }));
+      } catch (writeErr) {
+        log('ERROR', 'send-email', 'email_error', submissionId, { error: 'could_not_write_email_failed', errorName: (writeErr as Error).name });
+      }
       throw err;
     }
   }
