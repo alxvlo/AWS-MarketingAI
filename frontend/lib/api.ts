@@ -35,8 +35,9 @@ export interface SubmissionResult {
 
 /**
  * Request a presigned S3 PUT URL from the upload Lambda.
- * @param email     Recipient email address provided by the user.
- * @param contentType  MIME type of the image being uploaded.
+ * @param email       Recipient email address provided by the user.
+ * @param contentType MIME type of the image being uploaded.
+ * @param fileSize    Size in bytes — validated server-side (max 5 MB).
  */
 export async function requestPresignedUrl(
   email: string,
@@ -45,10 +46,7 @@ export async function requestPresignedUrl(
 ): Promise<PresignedUrlResponse> {
   const res = await fetch(UPLOAD_API, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.NEXT_PUBLIC_API_KEY ?? "",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, contentType, fileSize }),
   });
 
