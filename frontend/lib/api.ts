@@ -31,6 +31,18 @@ export interface SubmissionResult {
   emailSentAt: string;
   templateUsed: string;
   timestamp: string;
+  status?: string;
+}
+
+const TERMINAL_STATUSES = new Set([
+  'email_sent',
+  'email_failed',
+  'email_suppressed',
+  'email_skipped',
+]);
+
+function isTerminal(data: SubmissionResult): boolean {
+  return !!data.emailSentAt || TERMINAL_STATUSES.has(data.status ?? '');
 }
 
 /**
@@ -93,7 +105,7 @@ export async function pollResult(
     const res = await fetch(`${RESULTS_API}/${submissionId}`);
     if (res.ok) {
       const data = (await res.json()) as SubmissionResult;
-      if (data.emailSentAt) return data;
+      if (isTerminal(data)) return data;
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }

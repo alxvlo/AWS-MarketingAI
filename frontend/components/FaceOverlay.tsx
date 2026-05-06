@@ -56,10 +56,17 @@ export default function FaceOverlay({ videoEl, onDetectionChange }: FaceOverlayP
           canvas.height = videoEl.videoHeight;
         }
 
-        const result = await faceapi.detectSingleFace(
-          videoEl,
-          new faceapi.TinyFaceDetectorOptions()
-        );
+        let result;
+        try {
+          result = await faceapi.detectSingleFace(
+            videoEl,
+            new faceapi.TinyFaceDetectorOptions()
+          );
+        } catch {
+          // Stream was stopped while TF.js was processing (snap fired concurrently).
+          // cancelled will be true on the next tick; just bail without crashing.
+          return;
+        }
 
         if (cancelled || !canvas) return;
 

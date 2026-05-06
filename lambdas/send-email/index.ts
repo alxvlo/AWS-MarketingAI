@@ -88,6 +88,28 @@ const TEMPLATES: Record<string, EmotionTemplate> = {
 
 const DEFAULT_TEMPLATE: EmotionTemplate = TEMPLATES['neutral_v1'];
 
+async function markTerminal(submissionId: string, status: string, sentAt?: string): Promise<void> {
+  const updateExpr: string[] = ['#st = :status'];
+  const exprAttrValues: Record<string, any> = { ':status': status };
+  const exprAttrNames: Record<string, string> = { '#st': 'status' };
+
+  if (sentAt) {
+    updateExpr.push('emailSentAt = :sentAt');
+    exprAttrValues[':sentAt'] = sentAt;
+  }
+
+  await ddb.send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { submissionId },
+    UpdateExpression: 'SET ' + updateExpr.join(', '),
+    ExpressionAttributeNames: exprAttrNames,
+    ExpressionAttributeValues: exprAttrValues,
+  })).catch((err) => {
+    log('ERROR', 'send-email', 'mark_terminal_error', submissionId, { error: err.message });
+    throw err;
+  });
+}
+
 export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
   for (const record of event.Records) {
     if (record.eventName !== 'MODIFY' && record.eventName !== 'INSERT') continue;
@@ -102,6 +124,7 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
 
     if (SKIP_EMOTIONS.has(dominantEmotion)) {
       log('INFO', 'send-email', 'email_skipped_no_face', submissionId);
+      await markTerminal(submissionId, 'email_skipped');
       continue;
     }
 
@@ -113,6 +136,7 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
       log('INFO', 'send-email', 'email_suppressed_freq_cap', submissionId, {
         emailMasked: email.replace(/(.{2}).+(@.+)/, '$1***$2'),
       });
+      await markTerminal(submissionId, 'email_suppressed');
       continue;
     }
 
@@ -158,13 +182,12 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
         ddb.send(new UpdateCommand({
           TableName: TABLE_NAME,
           Key: { submissionId },
-          UpdateExpression: 'SET templateUsed = :tmpl, #st = :done',
-          ExpressionAttributeNames: { '#st': 'status' },
+          UpdateExpression: 'SET templateUsed = :tmpl',
           ExpressionAttributeValues: {
             ':tmpl': templateKey,
-            ':done': 'email_sent',
           },
         })),
+        markTerminal(submissionId, 'email_sent', sentAt),
         ddb.send(new PutCommand({
           TableName: CAMPAIGNS_TABLE_NAME,
           Item: {
@@ -187,17 +210,11 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
     } catch (err) {
       log('ERROR', 'send-email', 'email_error', submissionId, { error: (err as Error).message, errorName: (err as Error).name });
       try {
-        await ddb.send(new UpdateCommand({
-          TableName: TABLE_NAME,
-          Key: { submissionId },
-          UpdateExpression: 'SET #st = :failed',
-          ExpressionAttributeNames: { '#st': 'status' },
-          ExpressionAttributeValues: { ':failed': 'email_failed' },
-        }));
+        await markTerminal(submissionId, 'email_failed');
       } catch (writeErr) {
         log('ERROR', 'send-email', 'email_error', submissionId, { error: 'could_not_write_email_failed', errorName: (writeErr as Error).name });
       }
-      throw err;
+      // Swallow error since we've already marked it as a terminal failure
     }
   }
 };
