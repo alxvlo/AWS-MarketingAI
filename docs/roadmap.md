@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-02 (Phase 2E complete — CloudFront frontend hosting live at d1d3rdsk86mn4b.cloudfront.net)  
+**Last updated**: 2026-05-06 (smoke test run; backend code drift identified — capture stack redeploy required)  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -29,8 +29,8 @@ Full pipeline smoke-tested and verified.
 Addressing consultation feedback + known bugs from testing.
 
 ### 2A — Image Pipeline Fix (BLOCKER)
-- [ ] Debug presigned URL flow — confirm browser makes 2 requests (POST /upload → PUT to S3)
-- [ ] Validate image actually lands in S3 and triggers EventBridge/Lambda
+- [ ] **[NEEDS REDEPLOY]** Backend capture stack is running stale code (requires x-api-key header + deprecated fileSize field). All recent commits were frontend-only so `deploy.yml` never fired. Push a non-frontend/non-docs commit to main to trigger CDK redeploy and sync deployed stack with current repo code. See `docs/smoke-test-2026-05-06.md`.
+- [ ] Validate image actually lands in S3 and triggers EventBridge/Lambda (blocked until redeploy)
 - [ ] Add CloudWatch logging to Rek Handler Lambda to confirm S3 key received
 - [ ] Fix CORS headers on presigned URL response if PUT to S3 is failing
 
@@ -122,3 +122,4 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-04-23 | GitHub Actions + OIDC over CodePipeline | Team is GitHub-native; no stored AWS creds |
 | 2026-04-23 | ap-southeast-1 region | Latency from PH; no data-residency constraints |
 | 2026-05-02 | Frontend hosted on CloudFront + S3, not Vercel | Stays inside the single AWS account (no extra vendor accounts), keeps the project AWS-native per CLAUDE.md, and CloudFront's "always free" 1TB/month tier covers expected traffic. Static export is sufficient — no SSR/ISR needed. |
+| 2026-05-06 | Backend CDK stack drifted from deployed state — submit button fix deferred to post-redeploy | All commits since Phase 2D were frontend-only, so deploy.yml never fired. Deployed capture stack requires x-api-key header and deprecated fileSize field; current repo code has neither. Redeploy required before end-to-end test can pass. |
