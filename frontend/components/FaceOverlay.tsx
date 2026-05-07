@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 interface FaceOverlayProps {
   videoEl: HTMLVideoElement | null;
   onDetectionChange: (detected: boolean) => void;
+  onUnavailable?: () => void;
 }
 
 const MODEL_URL = "/models";
@@ -12,13 +13,15 @@ const GREEN = "#22c55e";
 const RED = "#ef4444";
 const STROKE = 3;
 
-export default function FaceOverlay({ videoEl, onDetectionChange }: FaceOverlayProps) {
+export default function FaceOverlay({ videoEl, onDetectionChange, onUnavailable }: FaceOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Keep a ref to the callback so the detection loop never captures a stale closure
+  // Keep refs to callbacks so the detection loop never captures stale closures
   const callbackRef = useRef(onDetectionChange);
+  const onUnavailableRef = useRef(onUnavailable);
   useEffect(() => {
     callbackRef.current = onDetectionChange;
+    onUnavailableRef.current = onUnavailable;
   });
 
   useEffect(() => {
@@ -91,7 +94,11 @@ export default function FaceOverlay({ videoEl, onDetectionChange }: FaceOverlayP
       rafId = requestAnimationFrame(detect);
     }
 
-    run().catch(console.error);
+    run().catch((err) => {
+      // WebGL / TF.js init failure — face detection is UX-only, so degrade gracefully
+      console.warn("Face detection unavailable:", (err as Error).message);
+      if (!cancelled) onUnavailableRef.current?.();
+    });
 
     return () => {
       cancelled = true;

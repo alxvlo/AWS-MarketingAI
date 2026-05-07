@@ -68,6 +68,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
   const [faceDetected, setFaceDetected] = useState(false);
   const [isStable, setIsStable] = useState(false);
   const [shutterActive, setShutterActive] = useState(false);
+  const [faceDetectionAvailable, setFaceDetectionAvailable] = useState(true);
 
   // ── Shared image state (set by snap or file upload) ─────────────────────────
   const [imageBlob, setImageBlob] = useState<Blob | null>(null);
@@ -229,6 +230,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
     setImagePreviewUrl(null);
     setIsStable(false);
     setFaceDetected(false);
+    setFaceDetectionAvailable(true);
     setCameraState("loading");
     setCameraKey((k) => k + 1); // forces video element remount → triggers camera effect
     setUploadState("idle");
@@ -395,7 +397,11 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
 
             {/* Face detection overlay */}
             {cameraLive && (
-              <FaceOverlay videoEl={videoEl} onDetectionChange={handleDetectionChange} />
+              <FaceOverlay
+                videoEl={videoEl}
+                onDetectionChange={handleDetectionChange}
+                onUnavailable={() => setFaceDetectionAvailable(false)}
+              />
             )}
 
             {/* Countdown overlay */}
@@ -419,11 +425,19 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
             />
           </div>
 
-          {/* Detection status text */}
-          {cameraLive && (
+          {/* Detection status / manual snap fallback */}
+          {cameraLive && faceDetectionAvailable && (
             <p className={["mt-2 text-sm text-center", faceDetected ? "text-green-500" : "text-slate-500"].join(" ")}>
               {faceDetected ? "Face detected ✓" : "Position your face in the frame"}
             </p>
+          )}
+          {cameraLive && !faceDetectionAvailable && (
+            <button
+              onClick={handleSnap}
+              className="mt-3 w-full rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 transition-colors"
+            >
+              Take Photo
+            </button>
           )}
 
           {/* Upload status / result */}
