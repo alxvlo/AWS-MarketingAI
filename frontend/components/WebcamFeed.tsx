@@ -19,38 +19,34 @@ function ResultPanel({ result }: { result: SubmissionResult }) {
   switch (result.status) {
     case "email_sent":
       return (
-        <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm">
-          <p className="font-semibold text-green-700 mb-1">✓ Analysis complete</p>
-          <p className="text-slate-700">Emotion detected: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
-          <p className="text-slate-700">Email sent: <span className="font-medium">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
-          <p className="text-slate-700">Template used: <span className="font-medium">{result.templateUsed}</span></p>
+        <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-success)" }}>
+          <p className="eyebrow mb-1" style={{ color: "var(--status-success)" }}>Analysis complete</p>
+          <p className="text-[13px] text-[var(--ink-secondary)]">Emotion: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
+          <p className="text-[13px] text-[var(--ink-secondary)]">Email sent: <span className="numeric">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
+          <p className="text-[13px] text-[var(--ink-secondary)]">Template: <span className="font-medium">{result.templateUsed}</span></p>
         </div>
       );
-
     case "no_face_detected":
       return (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
-          <p className="font-semibold text-amber-700 mb-1">No face detected</p>
-          <p className="text-slate-700">We couldn&apos;t find a face in your photo. Try retaking with better lighting.</p>
+        <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-warning)" }}>
+          <p className="eyebrow mb-1" style={{ color: "var(--status-warning)" }}>No face detected</p>
+          <p className="text-[13px] text-[var(--ink-secondary)]">Try retaking with better lighting.</p>
         </div>
       );
-
     case "invalid_file":
       return (
-        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm">
-          <p className="font-semibold text-red-700 mb-1">Invalid file</p>
-          <p className="text-slate-700">The uploaded file wasn&apos;t a valid JPEG/PNG/WebP under 5 MB.</p>
+        <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-error)" }}>
+          <p className="eyebrow mb-1" style={{ color: "var(--status-error)" }}>Invalid file</p>
+          <p className="text-[13px] text-[var(--ink-secondary)]">Please upload a valid JPEG/PNG/WebP under 5 MB.</p>
         </div>
       );
-
     case "email_failed":
       return (
-        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm">
-          <p className="font-semibold text-red-700 mb-1">Email could not be sent</p>
-          <p className="text-slate-700">Emotion was detected (<span className="capitalize">{result.dominantEmotion.toLowerCase()}</span>) but the email failed to send.</p>
+        <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-error)" }}>
+          <p className="eyebrow mb-1" style={{ color: "var(--status-error)" }}>Email failed</p>
+          <p className="text-[13px] text-[var(--ink-secondary)]">Emotion detected (<span className="capitalize">{result.dominantEmotion.toLowerCase()}</span>) but email failed to send.</p>
         </div>
       );
-
     default:
       return null;
   }
@@ -314,23 +310,27 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
   const cameraLive = mode === "camera" && cameraState === "ready";
   const cameraSnapped = mode === "camera" && cameraState === "snapped";
 
+  // ── Button style constants ────────────────────────────────────────────────────
+  const PRIMARY_BTN = "bg-[var(--ink-primary)] text-[var(--bg-canvas)] py-2.5 text-[13px] font-semibold uppercase tracking-wider hover:bg-[var(--accent)] disabled:opacity-50 transition-colors w-full";
+  const SECONDARY_BTN = "border border-[var(--rule)] text-[var(--ink-secondary)] py-2.5 text-[13px] font-semibold uppercase tracking-wider hover:bg-[var(--bg-inset)] disabled:opacity-50 transition-colors w-full";
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <>
       {/* Mode tabs */}
-      <div className="flex rounded-lg border border-slate-200 p-1 mb-4 bg-slate-50">
+      <div className="flex border-b border-[var(--rule)] mb-4">
         {(["camera", "upload"] as const).map((m) => (
           <button
             key={m}
             onClick={() => switchMode(m)}
             className={[
-              "flex-1 rounded-md py-1.5 text-sm font-medium transition-colors",
+              "flex-1 py-2 text-[13px] font-semibold uppercase tracking-wider transition-colors",
               mode === m
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-700",
+                ? "border-b-2 border-[var(--accent)] text-[var(--ink-primary)] -mb-px"
+                : "text-[var(--ink-tertiary)] hover:text-[var(--ink-secondary)]",
             ].join(" ")}
           >
-            {m === "camera" ? "Use Camera" : "Upload a Photo"}
+            {m === "camera" ? "Camera" : "Upload"}
           </button>
         ))}
       </div>
@@ -341,32 +341,32 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
           <div className="relative w-full" style={{ aspectRatio: "4 / 3" }}>
             {/* Loading */}
             {cameraState === "loading" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 rounded-xl">
-                <div className="w-8 h-8 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
-                <p className="mt-3 text-sm text-slate-400">Initializing camera…</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-canvas)]">
+                <div className="w-8 h-8 border-2 border-[var(--rule)] border-t-[var(--accent)] rounded-full animate-spin" />
+                <p className="mt-3 text-sm text-[var(--ink-tertiary)]">Initializing camera…</p>
               </div>
             )}
 
             {/* Permission denied */}
             {cameraState === "denied" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 rounded-xl px-6 text-center">
-                <svg className="w-12 h-12 text-red-400 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-canvas)] px-6 text-center">
+                <svg className="w-12 h-12 text-[var(--status-error)] mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3 21 21" />
                 </svg>
-                <p className="text-sm font-semibold text-red-400 mb-1">Camera access denied</p>
-                <p className="text-xs text-slate-400 max-w-xs">{errorMessage}</p>
+                <p className="text-sm font-semibold text-[var(--status-error)] mb-1">Camera access denied</p>
+                <p className="text-xs text-[var(--ink-tertiary)] max-w-xs">{errorMessage}</p>
               </div>
             )}
 
             {/* Error */}
             {cameraState === "error" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 rounded-xl px-6 text-center">
-                <svg className="w-12 h-12 text-amber-400 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-canvas)] px-6 text-center">
+                <svg className="w-12 h-12 text-[var(--status-warning)] mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                 </svg>
-                <p className="text-sm font-semibold text-amber-400 mb-1">Camera unavailable</p>
-                <p className="text-xs text-slate-400 max-w-xs">{errorMessage}</p>
+                <p className="text-sm font-semibold text-[var(--status-warning)] mb-1">Camera unavailable</p>
+                <p className="text-xs text-[var(--ink-tertiary)] max-w-xs">{errorMessage}</p>
               </div>
             )}
 
@@ -375,7 +375,8 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               <img
                 src={imagePreviewUrl}
                 alt="Captured photo"
-                className="w-full h-full object-cover rounded-xl"
+                className="w-full h-full object-cover"
+                style={{ borderRadius: 4 }}
               />
             )}
 
@@ -390,9 +391,10 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               playsInline
               muted
               className={[
-                "w-full h-full object-cover rounded-xl",
+                "w-full h-full object-cover",
                 cameraLive ? "block" : "hidden",
               ].join(" ")}
+              style={{ borderRadius: 4 }}
             />
 
             {/* Face detection overlay */}
@@ -407,10 +409,10 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
             {/* Countdown overlay */}
             {cameraLive && isStable && (
               <>
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm font-medium px-3 py-1 rounded-full pointer-events-none select-none">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-[11px] font-semibold px-3 py-1 uppercase tracking-wider pointer-events-none select-none">
                   Hold still…
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20 rounded-b-xl overflow-hidden pointer-events-none">
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20 overflow-hidden pointer-events-none">
                   <div ref={progressBarRef} className="h-full bg-green-400" style={{ width: "100%" }} />
                 </div>
               </>
@@ -419,7 +421,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
             {/* Shutter flash */}
             <div
               className={[
-                "absolute inset-0 rounded-xl bg-white pointer-events-none transition-opacity duration-200",
+                "absolute inset-0 bg-white pointer-events-none transition-opacity duration-200",
                 shutterActive ? "opacity-100" : "opacity-0",
               ].join(" ")}
             />
@@ -427,25 +429,22 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
 
           {/* Detection status / manual snap fallback */}
           {cameraLive && faceDetectionAvailable && (
-            <p className={["mt-2 text-sm text-center", faceDetected ? "text-green-500" : "text-slate-500"].join(" ")}>
+            <p className={["mt-2 text-sm text-center", faceDetected ? "text-[var(--status-success)]" : "text-[var(--ink-tertiary)]"].join(" ")}>
               {faceDetected ? "Face detected ✓" : "Position your face in the frame"}
             </p>
           )}
           {cameraLive && !faceDetectionAvailable && (
-            <button
-              onClick={handleSnap}
-              className="mt-3 w-full rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 transition-colors"
-            >
+            <button onClick={handleSnap} className={PRIMARY_BTN} style={{ borderRadius: 2, letterSpacing: "0.08em" }}>
               Take Photo
             </button>
           )}
 
           {/* Upload status / result */}
           {uploadState === "uploading" && (
-            <p className="mt-3 text-sm text-center text-slate-500 animate-pulse">{uploadStatus}</p>
+            <p className="mt-3 text-sm text-center text-[var(--ink-tertiary)] animate-pulse">{uploadStatus}</p>
           )}
           {uploadState === "error" && (
-            <p className="mt-3 text-sm text-center text-red-500">{uploadError}</p>
+            <p className="mt-3 text-sm text-center text-[var(--status-error)]">{uploadError}</p>
           )}
           {uploadState === "done" && result && <ResultPanel result={result} />}
 
@@ -455,14 +454,16 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               <button
                 onClick={handleRetake}
                 disabled={uploadState === "uploading"}
-                className="flex-1 rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={SECONDARY_BTN}
+                style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
                 Retake
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={uploadState === "uploading"}
-                className="flex-1 rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={PRIMARY_BTN}
+                style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
                 {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
               </button>
@@ -471,7 +472,8 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
           {uploadState === "done" && (
             <button
               onClick={handleRetake}
-              className="mt-3 w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className={SECONDARY_BTN}
+              style={{ borderRadius: 2, letterSpacing: "0.08em" }}
             >
               Start Over
             </button>
@@ -490,21 +492,21 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={[
-                "w-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center",
+                "w-full border-2 border-dashed flex flex-col items-center justify-center",
                 "py-14 px-6 text-center cursor-pointer transition-colors",
                 isDragOver
-                  ? "border-blue-400 bg-blue-50"
-                  : "border-slate-300 hover:border-slate-400 bg-slate-50",
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                  : "border-[var(--rule)] hover:border-[var(--ink-tertiary)] bg-[var(--bg-canvas)]",
               ].join(" ")}
             >
-              <svg className="w-10 h-10 text-slate-400 mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <svg className="w-10 h-10 text-[var(--ink-tertiary)] mb-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
               </svg>
-              <p className="text-sm font-medium text-slate-700">
+              <p className="text-sm font-medium text-[var(--ink-secondary)]">
                 Drag &amp; drop a photo, or{" "}
-                <span className="text-blue-600">browse</span>
+                <span className="text-[var(--accent)]">browse</span>
               </p>
-              <p className="mt-1 text-xs text-slate-400">JPEG, PNG, or WebP · max 5 MB</p>
+              <p className="mt-1 text-xs text-[var(--ink-tertiary)]">JPEG, PNG, or WebP · max 5 MB</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -519,20 +521,21 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               <img
                 src={imagePreviewUrl}
                 alt="Uploaded photo"
-                className="w-full h-full object-cover rounded-xl"
+                className="w-full h-full object-cover"
+                style={{ borderRadius: 4 }}
               />
             </div>
           )}
 
           {fileError && (
-            <p className="mt-2 text-xs text-red-500 text-center">{fileError}</p>
+            <p className="mt-2 text-xs text-[var(--status-error)] text-center">{fileError}</p>
           )}
 
           {uploadState === "uploading" && (
-            <p className="mt-3 text-sm text-center text-slate-500 animate-pulse">{uploadStatus}</p>
+            <p className="mt-3 text-sm text-center text-[var(--ink-tertiary)] animate-pulse">{uploadStatus}</p>
           )}
           {uploadState === "error" && (
-            <p className="mt-3 text-sm text-center text-red-500">{uploadError}</p>
+            <p className="mt-3 text-sm text-center text-[var(--status-error)]">{uploadError}</p>
           )}
           {uploadState === "done" && result && <ResultPanel result={result} />}
 
@@ -541,23 +544,26 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               <button
                 onClick={handleSubmit}
                 disabled={uploadState === "uploading"}
-                className="w-full rounded-lg bg-slate-800 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={PRIMARY_BTN}
+                style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
                 {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
               </button>
               <button
                 onClick={handleChooseDifferent}
                 disabled={uploadState === "uploading"}
-                className="text-sm text-center text-slate-500 hover:text-slate-700 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={SECONDARY_BTN}
+                style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
-                Choose a different photo
+                Choose Different
               </button>
             </div>
           )}
           {uploadState === "done" && (
             <button
               onClick={() => { handleChooseDifferent(); setUploadState("idle"); setResult(null); setUploadError(null); }}
-              className="mt-2 w-full rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className={SECONDARY_BTN}
+              style={{ borderRadius: 2, letterSpacing: "0.08em" }}
             >
               Start Over
             </button>
