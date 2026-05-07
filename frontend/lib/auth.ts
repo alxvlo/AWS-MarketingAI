@@ -24,6 +24,7 @@ export function useAuth() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional hydration: reading sessionStorage is only valid client-side
     setT(getToken());
     setHydrated(true);
     const onChange = () => setT(getToken());
