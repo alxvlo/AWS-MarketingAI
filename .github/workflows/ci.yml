@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  backend:
+    name: CDK synth + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+
+      - name: Validate CDK synthesis
+        run: npx cdk synth
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_UPLOAD_API: ${{ vars.NEXT_PUBLIC_UPLOAD_API }}
+      NEXT_PUBLIC_RESULTS_API: ${{ vars.NEXT_PUBLIC_RESULTS_API }}
+      NEXT_PUBLIC_ADMIN_API: ${{ vars.NEXT_PUBLIC_ADMIN_API }}
+      NEXT_PUBLIC_ANALYTICS_API: ${{ vars.NEXT_PUBLIC_ANALYTICS_API }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
+        run: npm run build
