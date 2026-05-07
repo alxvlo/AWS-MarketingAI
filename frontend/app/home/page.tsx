@@ -8,6 +8,7 @@ import EmotionCapturePanel from "@/components/home/EmotionCapturePanel";
 import KpiStrip from "@/components/home/KpiStrip";
 import EmotionDistributionCard from "@/components/home/EmotionDistributionCard";
 import CampaignsCard from "@/components/home/CampaignsCard";
+import TrendsCard from "@/components/home/TrendsCard";
 
 export default function HomePage() {
   const router = useRouter();
@@ -48,8 +49,8 @@ export default function HomePage() {
           </div>
 
           {/* H4 slot */}
-          <div className="col-span-12" id="trends-slot">
-            <Card eyebrow="30-day trend" title="Loading…"><div /></Card>
+          <div className="col-span-12">
+            <TrendsCard />
           </div>
           {/* H5 slot */}
           <div className="col-span-12" id="audit-slot">
