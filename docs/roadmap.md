@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-07 (silent-suppression hang bug fixed end-to-end; email frequency cap removed)  
+**Last updated**: 2026-05-08 (admin portal overhaul: login + unified /home + new visual system)  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -83,15 +83,15 @@ Professor confirmed this is required. Simplified from original over-engineered d
 - [x] Lambda: GET /analytics/trends — emotion counts grouped by day (last 30 days)
 - [x] DynamoDB campaigns table: dual-written by send-email Lambda — `{submissionId, email, emailSentAt, templateUsed, dominantEmotion}`. Routes are open during 3A; Lambda Authorizer wired up in 3B.
 
-### 3B — Admin Portal (Frontend + Auth)
-- [ ] API Gateway Lambda Authorizer — validates credentials from SSM Parameter Store (AWS-58)
-- [ ] Admin login page (simple username/password, credentials in SSM) (AWS-64) — UI exists at `frontend/app/admin/page.tsx`, pending real Lambda Authorizer wiring
-- [ ] Admin dashboard: emotion distribution chart (bar/pie) (AWS-65) — UI exists at `frontend/app/admin/dashboard/page.tsx` with mock data
-- [ ] Admin dashboard: submission volume over time (line chart) (AWS-66)
-- [ ] Admin dashboard: campaign performance table (sent count per template) (AWS-67)
-- [ ] Admin dashboard: trend forecasting display (simple moving average, 7-day) (AWS-59)
-- [ ] Protect all /analytics/* endpoints behind Lambda Authorizer — CDK route wiring + 401 verification (AWS-69)
-- [ ] Wire admin dashboard frontend to real /analytics/* endpoints — replace `frontend/lib/mockAnalytics.ts` mock data with live fetch calls, pass Basic Auth header (AWS-70)
+### 3B — Admin Portal (Frontend + Auth) ✅ DONE
+- [x] API Gateway Lambda Authorizer — validates credentials from SSM Parameter Store (AWS-58)
+- [x] Admin login page (`/login/`) — real Lambda Authorizer + SSM credentials (AWS-64)
+- [x] Admin dashboard: emotion distribution chart — horizontal bar list from live `/analytics/emotions` (AWS-65)
+- [x] Admin dashboard: submission volume over time — Recharts line chart from live `/analytics/trends` (AWS-66)
+- [x] Admin dashboard: campaign performance table — ranked table from live `/analytics/campaigns` (AWS-67)
+- [ ] Admin dashboard: trend forecasting display (simple moving average, 7-day) (AWS-59) — NOT in scope for this overhaul
+- [x] Protect all /analytics/* endpoints behind Lambda Authorizer — CDK route wiring + 401 verification (AWS-69)
+- [x] Wire admin dashboard frontend to real /analytics/* endpoints — live fetch calls with Basic Auth header; mockAnalytics.ts deleted (AWS-70)
 
 ---
 
@@ -126,3 +126,5 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-05-06 | Backend CDK stack drifted from deployed state — submit button fix deferred to post-redeploy | All commits since Phase 2D were frontend-only, so deploy.yml never fired. Deployed capture stack requires x-api-key header and deprecated fileSize field; current repo code has neither. Redeploy required before end-to-end test can pass. |
 | 2026-05-07 | Removed 24h email frequency cap (`EmailFrequencyCapTable` + Lambda check + IAM grant + env wiring) | OPTIONAL Phase 4 polish but actively blocked demo workflow: only 1 verified SES recipient (`alexvelo199@gmail.com`) and SES production access still pending after 5 days. Same change set fixed a class of frontend polling-hang bugs by writing honest terminal statuses for `no_face_detected` / `invalid_file` paths and exiting `pollResult` on any terminal status. Verified end-to-end live: 3+ back-to-back submissions all reached `email_sent`. See commits `c75b974`, `a9d0823`, `ca03439`. |
 | 2026-05-07 | `next.config.ts` `output: 'export'` is now conditional on `!isDev` | Static export config blocked the `force-dynamic` admin API route in `next dev` even after the route was renamed to `route.dev.ts`. Production build/deploy unaffected — only local dev mode now runs full Next.js so the dev-only admin audit page can serve. |
+| 2026-05-08 | Frontend reorganized to admin-only: `/login/` → `/home/` (unified emotion + admin grid) | User pivot — no public end-user; admin runs demo and views analytics from one screen |
+| 2026-05-08 | Editorial design system (Newsreader serif + warm neutrals + single rust accent) | huashu-design single-direction overhaul — replaces the slate/indigo Tailwind defaults |
