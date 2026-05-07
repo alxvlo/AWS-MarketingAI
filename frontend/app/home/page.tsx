@@ -3,12 +3,12 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
-import Card from "@/components/ui/Card";
 import EmotionCapturePanel from "@/components/home/EmotionCapturePanel";
 import KpiStrip from "@/components/home/KpiStrip";
 import EmotionDistributionCard from "@/components/home/EmotionDistributionCard";
 import CampaignsCard from "@/components/home/CampaignsCard";
 import TrendsCard from "@/components/home/TrendsCard";
+import SubmissionsAuditCard from "@/components/home/SubmissionsAuditCard";
 
 export default function HomePage() {
   const router = useRouter();
@@ -53,8 +53,8 @@ export default function HomePage() {
             <TrendsCard />
           </div>
           {/* H5 slot */}
-          <div className="col-span-12" id="audit-slot">
-            <Card eyebrow="Audit trail" title="Loading…"><div /></Card>
+          <div className="col-span-12">
+            <SubmissionsAuditCard />
           </div>
         </div>
       </main>
