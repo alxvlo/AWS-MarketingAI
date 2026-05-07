@@ -45,7 +45,7 @@ export const handler = async (
     if (!ALLOWED_CONTENT_TYPES.includes(contentType) || contentLength > MAX_SIZE_BYTES) {
       log('WARN', 'inference', 'no_face_detected', submissionId, { reason: 'invalid_file', contentType, contentLength });
       await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
-      await writeResult(submissionId, 'invalid_file', {});
+      await writeResult(submissionId, 'invalid_file', {}, 'invalid_file');
       return;
     }
 
@@ -58,7 +58,7 @@ export const handler = async (
     const face = result.FaceDetails?.[0];
     if (!face?.Emotions?.length) {
       log('WARN', 'inference', 'no_face_detected', submissionId);
-      await writeResult(submissionId, 'no_face_detected', {});
+      await writeResult(submissionId, 'no_face_detected', {}, 'no_face_detected');
       return;
     }
 
@@ -80,7 +80,12 @@ export const handler = async (
   }
 };
 
-async function writeResult(submissionId: string, dominantEmotion: string, emotionScores: Record<string, number>) {
+async function writeResult(
+  submissionId: string,
+  dominantEmotion: string,
+  emotionScores: Record<string, number>,
+  status: string = 'emotion_detected',
+) {
   await ddb.send(new UpdateCommand({
     TableName: TABLE_NAME,
     Key: { submissionId },
@@ -89,7 +94,7 @@ async function writeResult(submissionId: string, dominantEmotion: string, emotio
     ExpressionAttributeValues: {
       ':e': dominantEmotion,
       ':s': emotionScores,
-      ':status': 'emotion_detected',
+      ':status': status,
     },
   }));
 }
