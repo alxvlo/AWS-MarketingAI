@@ -4,7 +4,7 @@ interface CardProps {
   eyebrow?: string;
   title?: string;
   action?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
 }
 
