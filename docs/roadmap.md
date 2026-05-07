@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-06 (smoke test run; backend code drift identified — capture stack redeploy required)  
+**Last updated**: 2026-05-07 (silent-suppression hang bug fixed end-to-end; email frequency cap removed)  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -99,7 +99,7 @@ Professor confirmed this is required. Simplified from original over-engineered d
 - [x] CloudWatch dashboard: Lambda errors, invocations, duration (P50/P99), DLQ depth, SES delivery metrics — ObservabilityStack
 - [ ] CloudWatch Alarms → SNS alert to team Slack
 - [ ] Optional: A/B test scaffolding (same emotion, two offer variants)
-- [ ] Optional: Email frequency cap (deduplication — max 1 email per address per 24h)
+- ~~Optional: Email frequency cap (deduplication — max 1 email per address per 24h)~~ — implemented in `56c9897`, **removed 2026-05-07** in `c75b974` because it actively blocked the demo workflow under SES sandbox + single verified recipient. See [`plan-fix-silent-suppression-2026-05-07.md`](plan-fix-silent-suppression-2026-05-07.md) for full root-cause analysis of the silent-hang bug it triggered.
 
 ---
 
@@ -124,3 +124,5 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-04-23 | ap-southeast-1 region | Latency from PH; no data-residency constraints |
 | 2026-05-02 | Frontend hosted on CloudFront + S3, not Vercel | Stays inside the single AWS account (no extra vendor accounts), keeps the project AWS-native per CLAUDE.md, and CloudFront's "always free" 1TB/month tier covers expected traffic. Static export is sufficient — no SSR/ISR needed. |
 | 2026-05-06 | Backend CDK stack drifted from deployed state — submit button fix deferred to post-redeploy | All commits since Phase 2D were frontend-only, so deploy.yml never fired. Deployed capture stack requires x-api-key header and deprecated fileSize field; current repo code has neither. Redeploy required before end-to-end test can pass. |
+| 2026-05-07 | Removed 24h email frequency cap (`EmailFrequencyCapTable` + Lambda check + IAM grant + env wiring) | OPTIONAL Phase 4 polish but actively blocked demo workflow: only 1 verified SES recipient (`alexvelo199@gmail.com`) and SES production access still pending after 5 days. Same change set fixed a class of frontend polling-hang bugs by writing honest terminal statuses for `no_face_detected` / `invalid_file` paths and exiting `pollResult` on any terminal status. Verified end-to-end live: 3+ back-to-back submissions all reached `email_sent`. Full RCA: `docs/plan-fix-silent-suppression-2026-05-07.md`. |
+| 2026-05-07 | `next.config.ts` `output: 'export'` is now conditional on `!isDev` | Static export config blocked the `force-dynamic` admin API route in `next dev` even after the route was renamed to `route.dev.ts`. Production build/deploy unaffected — only local dev mode now runs full Next.js so the dev-only admin audit page can serve. |
