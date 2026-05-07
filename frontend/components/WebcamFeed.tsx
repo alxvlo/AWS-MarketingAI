@@ -15,6 +15,47 @@ interface WebcamFeedProps {
   email: string;
 }
 
+function ResultPanel({ result }: { result: SubmissionResult }) {
+  switch (result.status) {
+    case "email_sent":
+      return (
+        <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm">
+          <p className="font-semibold text-green-700 mb-1">✓ Analysis complete</p>
+          <p className="text-slate-700">Emotion detected: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
+          <p className="text-slate-700">Email sent: <span className="font-medium">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
+          <p className="text-slate-700">Template used: <span className="font-medium">{result.templateUsed}</span></p>
+        </div>
+      );
+
+    case "no_face_detected":
+      return (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+          <p className="font-semibold text-amber-700 mb-1">No face detected</p>
+          <p className="text-slate-700">We couldn&apos;t find a face in your photo. Try retaking with better lighting.</p>
+        </div>
+      );
+
+    case "invalid_file":
+      return (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm">
+          <p className="font-semibold text-red-700 mb-1">Invalid file</p>
+          <p className="text-slate-700">The uploaded file wasn&apos;t a valid JPEG/PNG/WebP under 5 MB.</p>
+        </div>
+      );
+
+    case "email_failed":
+      return (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm">
+          <p className="font-semibold text-red-700 mb-1">Email could not be sent</p>
+          <p className="text-slate-700">Emotion was detected (<span className="capitalize">{result.dominantEmotion.toLowerCase()}</span>) but the email failed to send.</p>
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
+
 export default function WebcamFeed({ email }: WebcamFeedProps) {
   // ── Camera ──────────────────────────────────────────────────────────────────
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
@@ -392,14 +433,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
           {uploadState === "error" && (
             <p className="mt-3 text-sm text-center text-red-500">{uploadError}</p>
           )}
-          {uploadState === "done" && result && (
-            <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm">
-              <p className="font-semibold text-green-700 mb-1">✓ Analysis complete</p>
-              <p className="text-slate-700">Emotion detected: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
-              <p className="text-slate-700">Email sent: <span className="font-medium">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
-              <p className="text-slate-700">Template used: <span className="font-medium">{result.templateUsed}</span></p>
-            </div>
-          )}
+          {uploadState === "done" && result && <ResultPanel result={result} />}
 
           {/* Post-snap action buttons */}
           {cameraSnapped && uploadState !== "done" && (
@@ -486,14 +520,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
           {uploadState === "error" && (
             <p className="mt-3 text-sm text-center text-red-500">{uploadError}</p>
           )}
-          {uploadState === "done" && result && (
-            <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4 text-sm">
-              <p className="font-semibold text-green-700 mb-1">✓ Analysis complete</p>
-              <p className="text-slate-700">Emotion detected: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
-              <p className="text-slate-700">Email sent: <span className="font-medium">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
-              <p className="text-slate-700">Template used: <span className="font-medium">{result.templateUsed}</span></p>
-            </div>
-          )}
+          {uploadState === "done" && result && <ResultPanel result={result} />}
 
           {imagePreviewUrl && uploadState !== "done" && (
             <div className="mt-3 flex flex-col gap-2">

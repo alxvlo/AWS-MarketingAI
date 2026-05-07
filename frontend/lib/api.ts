@@ -18,6 +18,15 @@ if (
 const UPLOAD_API = process.env.NEXT_PUBLIC_UPLOAD_API!;
 const RESULTS_API = process.env.NEXT_PUBLIC_RESULTS_API!;
 
+// Statuses that indicate the pipeline reached a terminal state — polling can exit.
+// If a freq-cap (or similar suppression) is reintroduced later, add `email_suppressed` here too.
+const TERMINAL_STATUSES = new Set([
+  "email_sent",
+  "email_failed",
+  "no_face_detected",
+  "invalid_file",
+]);
+
 export interface PresignedUrlResponse {
   submissionId: string;
   uploadUrl: string;
@@ -26,6 +35,7 @@ export interface PresignedUrlResponse {
 export interface SubmissionResult {
   submissionId: string;
   email: string;
+  status: string;
   dominantEmotion: string;
   emotionScores: Record<string, number>;
   emailSentAt: string;
@@ -93,11 +103,13 @@ export async function pollResult(
     const res = await fetch(`${RESULTS_API}/${submissionId}`);
     if (res.ok) {
       const data = (await res.json()) as SubmissionResult;
-      if (data.emailSentAt) return data;
+      if (data.emailSentAt || TERMINAL_STATUSES.has(data.status)) {
+        return data;
+      }
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
-  throw new Error("Timed out waiting for emotion detection and email send.");
+  throw new Error("Analysis took longer than expected. Please try again.");
 }
 
 /**
