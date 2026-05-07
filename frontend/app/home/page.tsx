@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
 import Card from "@/components/ui/Card";
 import EmotionCapturePanel from "@/components/home/EmotionCapturePanel";
+import KpiStrip from "@/components/home/KpiStrip";
 
 export default function HomePage() {
   const router = useRouter();
@@ -28,7 +29,9 @@ export default function HomePage() {
       <AppHeader />
       <main className="max-w-[1280px] mx-auto px-12 py-10 space-y-6">
         {/* KPI strip — H1 */}
-        <div id="kpi-slot" className="grid grid-cols-12 gap-6" />
+        <div className="grid grid-cols-12 gap-6">
+          <KpiStrip />
+        </div>
 
         {/* Primary grid */}
         <div className="grid grid-cols-12 gap-6">
