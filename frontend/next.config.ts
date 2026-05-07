@@ -8,8 +8,10 @@ const isDev = process.env.NODE_ENV === "development";
 const projectRoot = path.resolve(process.cwd());
 
 const nextConfig: NextConfig = {
-  // Emit a fully static site to frontend/out/ for S3 + CloudFront hosting.
-  output: "export",
+  // Static export only in production builds (frontend/out/ → S3 + CloudFront).
+  // Dev mode runs full Next.js so the dev-only admin API route at
+  // app/api/admin/submissions/route.dev.ts can serve.
+  ...(isDev ? {} : { output: "export" }),
 
   // Force trailing slashes so URLs map cleanly to S3 keys (e.g. /admin/ → /admin/index.html).
   // Without this, /admin would 404 on S3 because the key is admin/index.html.
