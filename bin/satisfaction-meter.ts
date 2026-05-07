@@ -24,6 +24,7 @@ const adminAuthStack = new AdminAuthStack(app, 'SatisfactionMeterAdminAuth', {
 const analyticsStack = new AnalyticsStack(app, 'SatisfactionMeterAnalytics', {
   env,
   submissionsTable: captureStack.submissionsTable,
+  protectWithAdminAuthorizer: true,
 });
 
 const inferenceStack = new InferenceStack(app, 'SatisfactionMeterInference', {
@@ -59,6 +60,8 @@ new WebStack(app, 'SatisfactionMeterWeb', { env });
 
 // explicit ordering so CDK deploys in the right sequence
 analyticsStack.addDependency(captureStack);
+// analyticsStack -> adminAuthStack ordering is implicit via cross-stack
+// authorizerFunction reference; no explicit addDependency needed here.
 inferenceStack.addDependency(captureStack);
 messagingStack.addDependency(analyticsStack);
 messagingStack.addDependency(inferenceStack);

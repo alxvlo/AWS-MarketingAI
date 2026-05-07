@@ -13,6 +13,7 @@ interface AdminAuthStackProps extends cdk.StackProps {
 
 export class AdminAuthStack extends cdk.Stack {
   public readonly authorizer: apigateway.TokenAuthorizer;
+  public readonly authorizerFunction: lambda.IFunction;
   public readonly api: apigateway.RestApi;
 
   constructor(scope: Construct, id: string, props: AdminAuthStackProps) {
@@ -50,6 +51,16 @@ export class AdminAuthStack extends cdk.Stack {
       environment: env,
     });
     grantSsm(authorizerFn, "Authorizer");
+    this.authorizerFunction = authorizerFn;
+
+    // Store the authorizer Lambda ARN in SSM so other stacks can look it up
+    // at synth time without creating a CDK cross-stack reference (which would
+    // cause a dependency cycle when those stacks also own a RestApi).
+    new ssm.StringParameter(this, 'AuthorizerFunctionArnParam', {
+      parameterName: '/satisfaction-meter/admin/authorizer-function-arn',
+      stringValue: authorizerFn.functionArn,
+      description: 'ARN of the admin-authorizer Lambda for use by other stacks',
+    });
 
     const submissionsFn = new NodejsFunction(this, "AdminSubmissionsFunction", {
       runtime: lambda.Runtime.NODEJS_22_X,
