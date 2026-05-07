@@ -1,0 +1,3 @@
+{
+  "ssm:account=860550672813:parameterName=/satisfaction-meter/admin/authorizer-function-arn:region=ap-southeast-1": "arn:aws:lambda:ap-southeast-1:860550672813:function:SatisfactionMeterAdminAut-AdminAuthorizerFunction6-LUwJAxdju9Z0"
+}
