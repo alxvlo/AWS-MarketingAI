@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-canvas: #f6f5f1;
+  --bg-surface: #fbfaf6;
+  --bg-inset: #efece4;
+  --ink-primary: #1a1817;
+  --ink-secondary: #5d5854;
+  --ink-tertiary: #8a847e;
+  --rule: #d8d2c5;
+  --accent: #b04a1f;
+  --accent-soft: #e9d4c4;
+  --status-success: #2f6b3d;
+  --status-warning: #a06b1f;
+  --status-error: #913321;
+  --status-info: #2c5778;
+
+  --emotion-happy: #c08a1d;
+  --emotion-surprised: #7a4f9b;
+  --emotion-neutral: #6e6a64;
+  --emotion-calm: #3e7d75;
+  --emotion-sad: #3d5a78;
+  --emotion-angry: #913321;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-inset: var(--bg-inset);
+  --color-ink: var(--ink-primary);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-ink-tertiary: var(--ink-tertiary);
+  --color-rule: var(--rule);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  background: var(--bg-canvas);
+  color: var(--ink-primary);
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+p, h1, h2, h3 { text-wrap: pretty; }
+
+.eyebrow {
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-tertiary);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }

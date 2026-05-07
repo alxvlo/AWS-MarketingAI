@@ -1,0 +1,31 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Satisfaction Meter" [level=1] [ref=e5]
+      - paragraph [ref=e6]: Design Preview · 2026-05-08
+    - generic [ref=e7]:
+      - generic [ref=e11]:
+        - paragraph [ref=e12]: Total submissions
+        - heading "1,284" [level=2] [ref=e13]
+      - generic [ref=e18]:
+        - paragraph [ref=e19]: Emails sent
+        - heading "971" [level=2] [ref=e20]
+      - generic [ref=e25]:
+        - paragraph [ref=e26]: Failed
+        - heading "14" [level=2] [ref=e27]
+      - generic [ref=e32]:
+        - paragraph [ref=e33]: Top emotion
+        - heading "Happy" [level=2] [ref=e34]
+      - generic [ref=e37]:
+        - generic [ref=e39]:
+          - paragraph [ref=e40]: Live capture
+          - heading "Emotion Detection" [level=2] [ref=e41]
+        - paragraph [ref=e43]: Webcam panel mounts here.
+      - generic [ref=e45]:
+        - paragraph [ref=e48]: Statuses
+        - generic [ref=e50]:
+          - generic [ref=e51]: Pending
+          - generic [ref=e52]: Emotion Detected
+          - generic [ref=e53]: Email Sent
+          - generic [ref=e54]: Email Failed
+          - generic [ref=e55]: No Face
