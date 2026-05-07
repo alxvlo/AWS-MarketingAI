@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { APIGatewayProxyHandler } from "aws-lambda";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
@@ -32,7 +33,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     ssm.send(new GetParameterCommand({ Name: PASSWORD_PARAM, WithDecryption: true })),
   ]);
 
-  if (username !== u.Parameter?.Value || password !== p.Parameter?.Value) {
+  const storedUsername = u.Parameter?.Value ?? "";
+  const storedPassword = p.Parameter?.Value ?? "";
+  const safeEq = (a: string, b: string) =>
+    a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  if (!safeEq(username, storedUsername) || !safeEq(password, storedPassword)) {
     return { statusCode: 401, headers: cors, body: JSON.stringify({ error: "Invalid credentials" }) };
   }
 

@@ -20,7 +20,6 @@ export default function SubmissionsAuditCard() {
     fetchSubmissions().then(setData).catch(e => setErr((e as Error).message));
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets state asynchronously via .then(); not a sync setState call
   useEffect(() => { load(); }, [load]);
 
   return (

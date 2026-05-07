@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { APIGatewayTokenAuthorizerHandler, APIGatewayAuthorizerResult } from "aws-lambda";
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
 
@@ -44,6 +45,8 @@ export const handler: APIGatewayTokenAuthorizerHandler = async (event) => {
   const p = decoded.slice(idx + 1);
 
   const creds = await getCreds();
-  if (u !== creds.username || p !== creds.password) return policy("Deny", event.methodArn);
+  const safeEq = (a: string, b: string) =>
+    a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  if (!safeEq(u, creds.username) || !safeEq(p, creds.password)) return policy("Deny", event.methodArn);
   return policy("Allow", event.methodArn);
 };
