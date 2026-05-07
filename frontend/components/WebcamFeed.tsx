@@ -92,20 +92,15 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
 
   // ── Camera effect ────────────────────────────────────────────────────────────
   useEffect(() => {
-    console.log("effect fired, videoEl:", videoEl);
-
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         streamRef.current = stream;
-        console.log("stream obtained:", stream);
         if (videoElRef.current) {
           videoElRef.current.srcObject = stream;
-          console.log("srcObject set:", videoElRef.current.srcObject);
         }
         setCameraState("ready");
       } catch (err) {
-        console.log("error name:", (err as Error).name, "message:", (err as Error).message);
         if (err instanceof DOMException && err.name === "NotAllowedError") {
           setCameraState("denied");
           setErrorMessage("Camera access was denied. Please allow camera access in your browser settings and reload the page.");
@@ -376,7 +371,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
                 src={imagePreviewUrl}
                 alt="Captured photo"
                 className="w-full h-full object-cover"
-                style={{ borderRadius: 4 }}
+                style={{ borderRadius: 2 }}
               />
             )}
 
@@ -394,7 +389,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
                 "w-full h-full object-cover",
                 cameraLive ? "block" : "hidden",
               ].join(" ")}
-              style={{ borderRadius: 4 }}
+              style={{ borderRadius: 2 }}
             />
 
             {/* Face detection overlay */}
@@ -413,7 +408,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
                   Hold still…
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20 overflow-hidden pointer-events-none">
-                  <div ref={progressBarRef} className="h-full bg-green-400" style={{ width: "100%" }} />
+                  <div ref={progressBarRef} className="h-full bg-[var(--status-success)]" style={{ width: "100%" }} />
                 </div>
               </>
             )}
@@ -522,7 +517,7 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
                 src={imagePreviewUrl}
                 alt="Uploaded photo"
                 className="w-full h-full object-cover"
-                style={{ borderRadius: 4 }}
+                style={{ borderRadius: 2 }}
               />
             </div>
           )}
