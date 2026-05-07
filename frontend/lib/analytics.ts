@@ -15,9 +15,8 @@ function authedGet<T>(path: string): Promise<T> {
 }
 
 export interface EmotionsResponse {
-  byEmotion?: Record<string, number>;
-  total?: number;
-  counts?: Record<string, number>;
+  counts: Record<string, number>;
+  total: number;
 }
 export interface CampaignsResponse {
   totalSent?: number;
@@ -27,10 +26,7 @@ export interface CampaignsResponse {
   earliestSentAt?: string;
   latestSentAt?: string;
 }
-export interface TrendsResponse {
-  days?: Array<{ date: string; counts: Record<string, number> }>;
-  trends?: Array<{ date: string; [key: string]: number | string }>;
-}
+export type TrendsResponse = Array<{ date: string; counts: Record<string, number> }>;
 
 export const fetchEmotions  = () => authedGet<EmotionsResponse>("/emotions");
 export const fetchCampaigns = () => authedGet<CampaignsResponse>("/campaigns");

@@ -6,6 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import Card from "@/components/ui/Card";
 import EmotionCapturePanel from "@/components/home/EmotionCapturePanel";
 import KpiStrip from "@/components/home/KpiStrip";
+import EmotionDistributionCard from "@/components/home/EmotionDistributionCard";
 
 export default function HomePage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function HomePage() {
           </div>
           <div className="col-span-5 space-y-6">
             {/* H2 + H3 slots */}
-            <div id="emotions-slot"><Card eyebrow="Emotion mix" title="Loading…"><div /></Card></div>
+            <EmotionDistributionCard />
             <div id="campaigns-slot"><Card eyebrow="Campaigns" title="Loading…"><div /></Card></div>
           </div>
 
