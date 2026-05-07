@@ -9,8 +9,11 @@ on:
       - '*.md'
 
 permissions:
-  id-token: write   # Required for OIDC — allows GitHub to request an AWS token
+  id-token: write
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   deploy:
@@ -18,17 +21,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -39,9 +43,6 @@ jobs:
 
       - name: Validate CDK synthesis
         run: npx cdk synth
-
-      - name: Run tests
-        run: npm test -- --passWithNoTests
 
       - name: Deploy all stacks
         run: npx cdk deploy --all --require-approval never

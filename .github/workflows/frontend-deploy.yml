@@ -12,6 +12,9 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy:
     name: Build & sync to S3 + CloudFront
@@ -22,7 +25,6 @@ jobs:
     env:
       NEXT_PUBLIC_UPLOAD_API: ${{ vars.NEXT_PUBLIC_UPLOAD_API }}
       NEXT_PUBLIC_RESULTS_API: ${{ vars.NEXT_PUBLIC_RESULTS_API }}
-      NEXT_PUBLIC_API_KEY: ${{ secrets.NEXT_PUBLIC_API_KEY }}
       NEXT_PUBLIC_ADMIN_API: ${{ vars.NEXT_PUBLIC_ADMIN_API }}
       NEXT_PUBLIC_ANALYTICS_API: ${{ vars.NEXT_PUBLIC_ANALYTICS_API }}
 
