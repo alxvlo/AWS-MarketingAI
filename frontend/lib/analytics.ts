@@ -19,10 +19,8 @@ export interface EmotionsResponse {
   total: number;
 }
 export interface CampaignsResponse {
-  totalSent?: number;
-  perTemplate?: Record<string, number>;
-  total?: number;
-  byTemplate?: Record<string, number>;
+  totalSent: number;
+  perTemplate: Record<string, number>;
   earliestSentAt?: string;
   latestSentAt?: string;
 }

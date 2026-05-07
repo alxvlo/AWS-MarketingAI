@@ -18,7 +18,7 @@ export default function CampaignsCard() {
       {data && (
         <table className="w-full text-[13px]">
           <tbody>
-            {Object.entries(data.perTemplate || data.byTemplate || {}).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
+            {Object.entries(data.perTemplate).sort((a, b) => b[1] - a[1]).map(([t, n]) => (
               <tr key={t} className="border-b border-[var(--rule)] last:border-0">
                 <td className="py-2 capitalize">{t}</td>
                 <td className="py-2 text-right numeric">{n}</td>
@@ -26,7 +26,7 @@ export default function CampaignsCard() {
             ))}
             <tr>
               <td className="pt-3 eyebrow">Total</td>
-              <td className="pt-3 text-right numeric font-semibold">{data.totalSent || data.total}</td>
+              <td className="pt-3 text-right numeric font-semibold">{data.totalSent}</td>
             </tr>
           </tbody>
         </table>
