@@ -93,6 +93,17 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
   // ── Camera effect ────────────────────────────────────────────────────────────
   useEffect(() => {
     async function startCamera() {
+      // navigator.mediaDevices is undefined outside a secure context
+      // (HTTP, file://, some embedded webviews). Accessing .getUserMedia
+      // directly would throw a TypeError that bypasses the DOMException
+      // handlers below.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraState("error");
+        setErrorMessage(
+          "Camera API unavailable. This page must be served over HTTPS in a supported browser."
+        );
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         streamRef.current = stream;

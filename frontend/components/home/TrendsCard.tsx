@@ -14,7 +14,12 @@ export default function TrendsCard() {
   const [err, setErr]   = useState<string | null>(null);
 
   useEffect(() => {
-    fetchTrends().then(setData).catch(e => setErr((e as Error).message));
+    const ac = new AbortController();
+    fetchTrends(ac.signal).then(setData).catch(e => {
+      if (ac.signal.aborted) return;
+      setErr((e as Error).message);
+    });
+    return () => ac.abort();
   }, []);
 
   if (err) return <Card eyebrow="30-day trend" title="Trend"><p className="text-[13px]" style={{ color: "var(--status-error)" }}>{err}</p></Card>;

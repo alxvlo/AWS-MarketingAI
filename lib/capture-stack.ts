@@ -77,6 +77,21 @@ export class CaptureStack extends cdk.Stack {
       },
     });
 
+    api.addGatewayResponse('Default4xx', {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      },
+    });
+    api.addGatewayResponse('Default5xx', {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      },
+    });
+
     const uploadResource = api.root.addResource('upload');
     // No API key: this is a public browser-facing endpoint — embedding a key in client JS
     // would expose it to anyone. Rate limiting is handled by API Gateway's default stage throttle.

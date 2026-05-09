@@ -80,6 +80,23 @@ export class AdminAuthStack extends cdk.Stack {
       },
     });
 
+    // CORS headers on API Gateway-generated 4xx/5xx so the browser surfaces
+    // the real status code instead of an opaque "blocked by CORS policy".
+    this.api.addGatewayResponse("Default4xx", {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+      },
+    });
+    this.api.addGatewayResponse("Default5xx", {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+      },
+    });
+
     this.authorizer = new apigateway.TokenAuthorizer(this, "AdminTokenAuthorizer", {
       handler: authorizerFn,
       identitySource: "method.request.header.Authorization",
