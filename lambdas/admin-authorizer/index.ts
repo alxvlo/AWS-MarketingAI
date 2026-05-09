@@ -23,12 +23,26 @@ async function getCreds() {
   return cache;
 }
 
+function stageWildcard(methodArn: string): string {
+  // methodArn: arn:aws:execute-api:region:account:apiId/stage/METHOD/resource
+  // Return:    arn:aws:execute-api:region:account:apiId/stage/*/*
+  // A single cached Allow policy then covers every method on this stage,
+  // so parallel calls to /emotions, /campaigns, /trends all hit the same cache entry.
+  const parts = methodArn.split(":");
+  const [apiId, stage] = parts[5].split("/");
+  return [...parts.slice(0, 5), `${apiId}/${stage}/*/*`].join(":");
+}
+
 function policy(effect: "Allow" | "Deny", resource: string, principal = "admin"): APIGatewayAuthorizerResult {
   return {
     principalId: principal,
     policyDocument: {
       Version: "2012-10-17",
-      Statement: [{ Action: "execute-api:Invoke", Effect: effect, Resource: resource }],
+      Statement: [{
+        Action: "execute-api:Invoke",
+        Effect: effect,
+        Resource: effect === "Allow" ? stageWildcard(resource) : resource,
+      }],
     },
   };
 }
