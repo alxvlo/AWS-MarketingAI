@@ -17,7 +17,12 @@ export default function EmotionDistributionCard() {
   const [err, setErr]   = useState<string | null>(null);
 
   useEffect(() => {
-    fetchEmotions().then(setData).catch(e => setErr((e as Error).message));
+    const ac = new AbortController();
+    fetchEmotions(ac.signal).then(setData).catch(e => {
+      if (ac.signal.aborted) return;
+      setErr((e as Error).message);
+    });
+    return () => ac.abort();
   }, []);
 
   return (

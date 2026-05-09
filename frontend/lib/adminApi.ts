@@ -37,11 +37,12 @@ export interface SubmissionsResponse {
   };
 }
 
-export async function fetchSubmissions(): Promise<SubmissionsResponse> {
+export async function fetchSubmissions(signal?: AbortSignal): Promise<SubmissionsResponse> {
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
   const res = await fetch(`${ADMIN_API}/admin/submissions`, {
     headers: { Authorization: `Basic ${token}` },
+    signal,
   });
   if (res.status === 401) throw new Error("Session expired");
   if (!res.ok) throw new Error(`Failed (${res.status})`);

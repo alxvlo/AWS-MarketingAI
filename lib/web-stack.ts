@@ -36,20 +36,38 @@ export class WebStack extends cdk.Stack {
 
     // CloudFront Functions run at the edge before the request hits S3.
     // S3 REST API (used by OAC) does not serve directory indexes, so /admin/ would 403.
-    // This function appends index.html to any trailing-slash path.
+    // Handles two cases:
+    //   /foo/  → rewrite to /foo/index.html (S3 key lookup)
+    //   /foo   → 301 redirect to /foo/ so the rewrite above fires on the next request
     const indexRewrite = new cloudfront.Function(this, 'IndexRewrite', {
       code: cloudfront.FunctionCode.fromInline(`
 function handler(event) {
   var request = event.request;
   var uri = request.uri;
   if (uri.endsWith('/')) {
-    request.uri = uri + 'index.html';
+    // Static asset directories (e.g. /models/) should never be index-rewritten.
+    // Only rewrite paths that look like HTML page directories.
+    if (!uri.startsWith('/models/') && !uri.startsWith('/_next/') && !uri.startsWith('/icons/') && !uri.startsWith('/images/')) {
+      request.uri = uri + 'index.html';
+    }
+    return request;
+  }
+  // No dot after the last slash = no file extension = page route without trailing slash.
+  // Skip static asset paths so extension-less binary files (e.g. model shards) pass through.
+  // Redirect so the browser and CDN cache the canonical trailing-slash URL.
+  var last = uri.lastIndexOf('/');
+  if (uri.indexOf('.', last) === -1 && !uri.startsWith('/models/') && !uri.startsWith('/_next/') && !uri.startsWith('/icons/') && !uri.startsWith('/images/')) {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: { location: { value: uri + '/' } }
+    };
   }
   return request;
 }
       `.trim()),
       runtime: cloudfront.FunctionRuntime.JS_2_0,
-      comment: 'Rewrite /foo/ → /foo/index.html for S3 static hosting',
+      comment: 'Rewrite /foo/ → /foo/index.html; redirect /foo → /foo/',
     });
 
     // ACM cert must live in us-east-1 — CloudFront requirement regardless of app region.
