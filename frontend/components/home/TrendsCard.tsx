@@ -27,7 +27,7 @@ export default function TrendsCard() {
   return (
     <Card eyebrow="30-day trend" title="Submissions over time">
       <div style={{ width: "100%", height: 280 }}>
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart data={flat} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
             <CartesianGrid stroke="var(--rule)" strokeDasharray="2 4" vertical={false} />
             <XAxis dataKey="date" stroke="var(--ink-tertiary)" fontSize={11} tickLine={false} axisLine={{ stroke: "var(--rule)" }} />

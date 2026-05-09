@@ -45,13 +45,18 @@ function handler(event) {
   var request = event.request;
   var uri = request.uri;
   if (uri.endsWith('/')) {
-    request.uri = uri + 'index.html';
+    // Static asset directories (e.g. /models/) should never be index-rewritten.
+    // Only rewrite paths that look like HTML page directories.
+    if (!uri.startsWith('/models/') && !uri.startsWith('/_next/') && !uri.startsWith('/icons/') && !uri.startsWith('/images/')) {
+      request.uri = uri + 'index.html';
+    }
     return request;
   }
   // No dot after the last slash = no file extension = page route without trailing slash.
+  // Skip static asset paths so extension-less binary files (e.g. model shards) pass through.
   // Redirect so the browser and CDN cache the canonical trailing-slash URL.
   var last = uri.lastIndexOf('/');
-  if (uri.indexOf('.', last) === -1) {
+  if (uri.indexOf('.', last) === -1 && !uri.startsWith('/models/') && !uri.startsWith('/_next/') && !uri.startsWith('/icons/') && !uri.startsWith('/images/')) {
     return {
       statusCode: 301,
       statusDescription: 'Moved Permanently',
