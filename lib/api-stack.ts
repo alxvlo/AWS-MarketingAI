@@ -43,6 +43,21 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
+    api.addGatewayResponse('Default4xx', {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      },
+    });
+    api.addGatewayResponse('Default5xx', {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      },
+    });
+
     const results = api.root.addResource('results');
     const submission = results.addResource('{submissionId}');
     submission.addMethod('GET', new apigateway.LambdaIntegration(getResultFn));

@@ -88,6 +88,24 @@ export class AnalyticsStack extends cdk.Stack {
       },
     });
 
+    // Without these, API Gateway-generated 4xx/5xx responses (authorizer
+    // denies, throttling, malformed requests) ship without CORS headers and
+    // browsers report them as opaque "blocked by CORS policy" errors.
+    api.addGatewayResponse('Default4xx', {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      },
+    });
+    api.addGatewayResponse('Default5xx', {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        'Access-Control-Allow-Origin': "'*'",
+        'Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+      },
+    });
+
     // Build a local TokenAuthorizer if protectWithAdminAuthorizer is true.
     // We look up the Lambda ARN from SSM at synth time (valueFromLookup resolves
     // to a plain string — not a CloudFormation token), avoiding a CDK cross-stack

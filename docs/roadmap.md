@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-08 (admin portal overhaul: login + unified /home + new visual system)  
+**Last updated**: 2026-05-08 (CloudFront trailing-slash redirect fix; Jira board sync)  
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -63,7 +63,8 @@ Addressing consultation feedback + known bugs from testing.
 - [x] GitHub Actions workflow `frontend-deploy.yml`: build → `aws s3 sync` → CloudFront invalidation
 - [x] Path filters on `deploy.yml` so backend deploys ignore `frontend/**`
 - [x] Extend GitHubActionsDeployRole with S3 write + cloudfront:CreateInvalidation
-- [x] Smoke test: `/`, `/admin/`, `/admin/dashboard/` all return 200 on CloudFront URL
+- [x] Smoke test: `/`, `/login/`, `/home/` all return 200 on CloudFront URL
+- [x] CloudFront Function updated: bare paths (`/login`, `/home`) now 301-redirect to trailing-slash canonical URL before index.html rewrite fires — fixes 404 on direct navigation without trailing slash (`lib/web-stack.ts`, deployed 2026-05-08)
 - [x] Add 3 DKIM CNAMEs at name.com for SES domain verification (`satisfactionmeter.live`)
 - [x] Verify sender email `noreply@satisfactionmeter.live` in SES console (ap-southeast-1)
 - [x] Request ACM cert in `us-east-1` for `satisfactionmeter.live` (DNS validated, cert issued)
@@ -128,3 +129,4 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-05-07 | `next.config.ts` `output: 'export'` is now conditional on `!isDev` | Static export config blocked the `force-dynamic` admin API route in `next dev` even after the route was renamed to `route.dev.ts`. Production build/deploy unaffected — only local dev mode now runs full Next.js so the dev-only admin audit page can serve. |
 | 2026-05-08 | Frontend reorganized to admin-only: `/login/` → `/home/` (unified emotion + admin grid) | User pivot — no public end-user; admin runs demo and views analytics from one screen |
 | 2026-05-08 | Editorial design system (Newsreader serif + warm neutrals + single rust accent) | huashu-design single-direction overhaul — replaces the slate/indigo Tailwind defaults |
+| 2026-05-08 | CloudFront Function extended to 301-redirect bare page routes to trailing-slash canonical | S3 REST API (OAC) has no directory-index concept; bare `/login` returned 403→404. Fixed in `lib/web-stack.ts` and deployed to `SatisfactionMeterWeb` stack. |

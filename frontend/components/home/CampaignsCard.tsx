@@ -8,7 +8,12 @@ export default function CampaignsCard() {
   const [err, setErr]   = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCampaigns().then(setData).catch(e => setErr((e as Error).message));
+    const ac = new AbortController();
+    fetchCampaigns(ac.signal).then(setData).catch(e => {
+      if (ac.signal.aborted) return;
+      setErr((e as Error).message);
+    });
+    return () => ac.abort();
   }, []);
 
   return (

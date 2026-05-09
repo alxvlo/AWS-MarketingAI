@@ -18,7 +18,12 @@ export default function KpiStrip() {
   const [err, setErr]   = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSubmissions().then(setData).catch(e => setErr((e as Error).message));
+    const ac = new AbortController();
+    fetchSubmissions(ac.signal).then(setData).catch(e => {
+      if (ac.signal.aborted) return;
+      setErr((e as Error).message);
+    });
+    return () => ac.abort();
   }, []);
 
   if (err) return <div className="col-span-12 text-[13px]" style={{ color: "var(--status-error)" }}>{err}</div>;

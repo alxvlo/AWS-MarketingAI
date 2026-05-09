@@ -14,7 +14,12 @@ export default function TrendsCard() {
   const [err, setErr]   = useState<string | null>(null);
 
   useEffect(() => {
-    fetchTrends().then(setData).catch(e => setErr((e as Error).message));
+    const ac = new AbortController();
+    fetchTrends(ac.signal).then(setData).catch(e => {
+      if (ac.signal.aborted) return;
+      setErr((e as Error).message);
+    });
+    return () => ac.abort();
   }, []);
 
   if (err) return <Card eyebrow="30-day trend" title="Trend"><p className="text-[13px]" style={{ color: "var(--status-error)" }}>{err}</p></Card>;
@@ -27,7 +32,7 @@ export default function TrendsCard() {
   return (
     <Card eyebrow="30-day trend" title="Submissions over time">
       <div style={{ width: "100%", height: 280 }}>
-        <ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <LineChart data={flat} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
             <CartesianGrid stroke="var(--rule)" strokeDasharray="2 4" vertical={false} />
             <XAxis dataKey="date" stroke="var(--ink-tertiary)" fontSize={11} tickLine={false} axisLine={{ stroke: "var(--rule)" }} />
