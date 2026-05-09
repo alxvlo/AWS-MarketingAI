@@ -21,3 +21,9 @@ frontend/.vercel/
 # Local environment variables (never commit)
 frontend/.env.local
 frontend/.env*.local
+
+# Investigation artifacts — playwright captures, ad-hoc screenshots, scratch plans
+.playwright-mcp/
+.claude/plan/
+live-*.png
+local-*.png
