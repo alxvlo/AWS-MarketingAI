@@ -1,7 +1,7 @@
 import { DynamoDBStreamEvent } from 'aws-lambda';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { AttributeValue } from '@aws-sdk/client-dynamodb';
 import { log } from '../shared/logger';
@@ -11,6 +11,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.env
 
 const TABLE_NAME = process.env.TABLE_NAME!;
 const CAMPAIGNS_TABLE_NAME = process.env.CAMPAIGNS_TABLE_NAME!;
+const SUPPRESSION_TABLE_NAME = process.env.SUPPRESSION_TABLE_NAME!;
 const SENDER_EMAIL = process.env.SENDER_EMAIL!;
 
 const SKIP_EMOTIONS = new Set(['no_face_detected', 'invalid_file']);
@@ -103,6 +104,12 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
       continue;
     }
 
+    const suppressed = await checkSuppression(email);
+    if (suppressed) {
+      log('INFO', 'send-email', 'email_suppressed', submissionId, { reason: suppressed.reason });
+      continue;
+    }
+
     const variant = Math.random() < 0.5 ? 'v1' : 'v2';
     const templateKey = `${dominantEmotion}_${variant}`;
     const template = TEMPLATES[templateKey] ?? DEFAULT_TEMPLATE;
@@ -180,3 +187,11 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
     }
   }
 };
+
+async function checkSuppression(email: string): Promise<{ reason: string } | null> {
+  const result = await ddb.send(new GetCommand({
+    TableName: SUPPRESSION_TABLE_NAME,
+    Key: { email },
+  }));
+  return result.Item ? { reason: result.Item.reason as string } : null;
+}
