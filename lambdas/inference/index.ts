@@ -14,6 +14,8 @@ const TABLE_NAME = process.env.TABLE_NAME!;
 const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
+const EMOTION_PRIORITY = ['happy', 'surprised', 'calm', 'neutral', 'sad', 'angry', 'fearful'];
+
 interface S3ObjectCreatedDetail {
   bucket: { name: string };
   object: { key: string };
@@ -70,10 +72,33 @@ export const handler = async (
     }
 
     const sorted = [...face.Emotions].sort((a, b) => (b.Confidence ?? 0) - (a.Confidence ?? 0));
-    const dominant = (sorted[0].Type as string).toLowerCase();
     const emotionScores = Object.fromEntries(
       sorted.map(e => [(e.Type as string).toLowerCase(), Number((e.Confidence ?? 0).toFixed(2))]),
     );
+
+    const topConfidence = sorted[0].Confidence ?? 0;
+    const tied = sorted.filter(e => (e.Confidence ?? 0) === topConfidence);
+
+    let dominant: string;
+    let tieBreaker: boolean;
+
+    if (tied.length > 1) {
+      tieBreaker = true;
+      const winner = tied.reduce((best, e) => {
+        const bestRank = EMOTION_PRIORITY.indexOf((best.Type as string).toLowerCase());
+        const eRank   = EMOTION_PRIORITY.indexOf((e.Type as string).toLowerCase());
+        return (eRank === -1 ? Infinity : eRank) < (bestRank === -1 ? Infinity : bestRank) ? e : best;
+      });
+      dominant = (winner.Type as string).toLowerCase();
+      log('INFO', 'inference', 'tie_break_resolved', submissionId, {
+        tiedEmotions: tied.map(e => (e.Type as string).toLowerCase()),
+        dominant,
+        topConfidence,
+      });
+    } else {
+      tieBreaker = false;
+      dominant = (sorted[0].Type as string).toLowerCase();
+    }
 
     log('INFO', 'inference', 'emotion_detected', submissionId, {
       dominantEmotion: dominant,
@@ -81,7 +106,7 @@ export const handler = async (
       emotionScores,
     }, Date.now() - start);
 
-    await writeResult(submissionId, dominant, emotionScores);
+    await writeResult(submissionId, dominant, emotionScores, 'emotion_detected', tieBreaker);
   } catch (err) {
     log('ERROR', 'inference', 'inference_error', submissionId, { error: (err as Error).message });
     throw err;
@@ -93,16 +118,18 @@ async function writeResult(
   dominantEmotion: string,
   emotionScores: Record<string, number>,
   status: string = 'emotion_detected',
+  tieBreaker: boolean = false,
 ) {
   await ddb.send(new UpdateCommand({
     TableName: TABLE_NAME,
     Key: { submissionId },
-    UpdateExpression: 'SET dominantEmotion = :e, emotionScores = :s, #st = :status',
+    UpdateExpression: 'SET dominantEmotion = :e, emotionScores = :s, #st = :status, tieBreaker = :tb',
     ExpressionAttributeNames: { '#st': 'status' },
     ExpressionAttributeValues: {
       ':e': dominantEmotion,
       ':s': emotionScores,
       ':status': status,
+      ':tb': tieBreaker,
     },
   }));
 }
