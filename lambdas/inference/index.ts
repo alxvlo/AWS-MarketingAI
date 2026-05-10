@@ -30,6 +30,13 @@ export const handler = async (
   const key = decodeURIComponent(event.detail.object.key.replace(/\+/g, ' '));
   const submissionId = submissionIdFromKey(key);
 
+  log('INFO', 'inference', 's3_event_received', submissionId, {
+    bucket,
+    key,
+    eventSource: event.source,
+    eventDetailType: event['detail-type'],
+  });
+
   if (!submissionId) {
     log('WARN', 'inference', 'no_face_detected', '', { reason: 'could_not_derive_submission_id', key });
     return;
@@ -49,7 +56,7 @@ export const handler = async (
       return;
     }
 
-    log('INFO', 'inference', 'rekognition_called', submissionId, { bucket, key });
+    log('INFO', 'inference', 'rekognition_called', submissionId, { bucket, key, rekognitionParams: { Attributes: ['ALL'] } });
     const result = await rekognition.send(new DetectFacesCommand({
       Image: { S3Object: { Bucket: bucket, Name: key } },
       Attributes: ['ALL'],
@@ -71,6 +78,7 @@ export const handler = async (
     log('INFO', 'inference', 'emotion_detected', submissionId, {
       dominantEmotion: dominant,
       topScore: emotionScores[dominant],
+      emotionScores,
     }, Date.now() - start);
 
     await writeResult(submissionId, dominant, emotionScores);
