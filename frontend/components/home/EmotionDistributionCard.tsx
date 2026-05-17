@@ -26,7 +26,7 @@ export default function EmotionDistributionCard() {
   }, []);
 
   return (
-    <Card eyebrow="Emotion mix" title="Distribution">
+    <Card eyebrow="All submissions" title="Emotion distribution">
       {err && <p className="text-[13px]" style={{ color: "var(--status-error)" }}>{err}</p>}
       {!err && !data && <p className="eyebrow">Loading…</p>}
       {data && (

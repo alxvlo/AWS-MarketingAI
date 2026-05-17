@@ -16,9 +16,6 @@ export default function EmotionCapturePanel() {
             value={email} onChange={e => setEmail(e.target.value)}
             className="w-full bg-[var(--bg-canvas)] border border-[var(--rule)] px-3.5 py-2.5 text-[15px] focus:outline-none focus:border-[var(--accent)] transition-colors"
             style={{ borderRadius: 2 }} />
-          <p className="mt-1.5 text-[12px] text-[var(--ink-tertiary)]">
-            Until SES production access lands, use a verified address (alexvelo199@gmail.com).
-          </p>
         </div>
         <WebcamFeed email={email} />
       </div>

@@ -2,11 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 import FaceOverlay from "@/components/FaceOverlay";
-import { submitPhoto, SubmissionResult } from "@/lib/api";
+import { analysePhoto, confirmAndSendEmail, SubmissionResult } from "@/lib/api";
 
 type CameraState = "loading" | "ready" | "denied" | "error" | "snapped";
 type Mode = "camera" | "upload";
-type UploadState = "idle" | "uploading" | "done" | "error";
+// Phase 1 lifecycle (upload + Rekognition):
+//   idle → analysing → analysed | error
+// Phase 2 lifecycle (confirm + email):
+//   analysed → sending → done | error
+type UploadState =
+  | "idle"
+  | "analysing"
+  | "analysed"
+  | "sending"
+  | "done"
+  | "error";
+
+// Basic format check used as a soft gate before triggering the analysis flow.
+// Server-side validation still runs; this is purely to suppress upload errors
+// while the user is mid-typing.
+function isValidEmailFormat(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -15,22 +32,172 @@ interface WebcamFeedProps {
   email: string;
 }
 
+// Fixed order of Rekognition's possible emotion labels. The scores panel always
+// shows these in the same order so the layout doesn't jitter between
+// submissions, regardless of which subset Rekognition actually returned.
+const REKOGNITION_EMOTIONS = [
+  "happy",
+  "calm",
+  "sad",
+  "angry",
+  "surprised",
+  "fear",
+  "confused",
+  "disgusted",
+  "unknown",
+] as const;
+
+function AnalyzingCard({ status }: { status: string }) {
+  return (
+    <div
+      className="mt-3 border p-4 flex items-center gap-3"
+      style={{ borderColor: "var(--rule)", borderRadius: 2 }}
+    >
+      <div className="w-4 h-4 border-2 border-[var(--rule)] border-t-[var(--accent)] rounded-full animate-spin shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="eyebrow mb-1" style={{ color: "var(--ink-tertiary)" }}>
+          AWS Rekognition
+        </p>
+        <p className="text-[13px] text-[var(--ink-secondary)] truncate">
+          {status || "Analyzing…"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RekognitionResultCard({ result }: { result: SubmissionResult }) {
+  const scores = result.emotionScores ?? {};
+  // Rekognition stores 0–100 confidences (see lambdas/inference/index.ts).
+  // dominantEmotion arrives lowercased from the inference Lambda.
+  const dominant = (result.dominantEmotion ?? "").toLowerCase();
+  const dominantPct = scores[dominant];
+  const emailFailed = result.status === "email_failed";
+  const emailSent = result.status === "email_sent";
+  // Phase 1 result (emotion_detected) — emotion + scores visible, email not yet sent.
+  const awaitingConfirm = result.status === "emotion_detected";
+
+  const eyebrowLabel = emailFailed
+    ? "Email failed"
+    : emailSent
+    ? "Analysis complete"
+    : "Emotion detected";
+  const eyebrowColor = emailFailed
+    ? "var(--status-warning)"
+    : emailSent
+    ? "var(--status-success)"
+    : "var(--accent)";
+
+  return (
+    <div
+      className="mt-3 border flex"
+      style={{ borderColor: "var(--rule)", borderRadius: 2 }}
+    >
+      {/* Left — dominant emotion */}
+      <div className="flex-1 p-4 flex flex-col justify-center">
+        <p className="eyebrow mb-2" style={{ color: eyebrowColor }}>
+          {eyebrowLabel} · AWS Rekognition
+        </p>
+        <p className="text-2xl font-semibold capitalize leading-tight text-[var(--ink-primary)]">
+          {dominant || "—"}
+        </p>
+        {typeof dominantPct === "number" && (
+          <p className="text-[11px] tabular-nums text-[var(--ink-tertiary)] mt-1">
+            {dominantPct.toFixed(1)}% confidence
+          </p>
+        )}
+        {awaitingConfirm ? (
+          <p className="text-[10px] text-[var(--ink-tertiary)] mt-3 leading-snug">
+            Review the result, then press <span className="text-[var(--ink-secondary)]">Send for Analysis</span> to email a tailored response.
+          </p>
+        ) : (
+          <p className="text-[10px] text-[var(--ink-tertiary)] mt-3 leading-snug">
+            Email sent{" "}
+            <span className="numeric text-[var(--ink-secondary)]">
+              {result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}
+            </span>
+            {" · "}template{" "}
+            <span className="text-[var(--ink-secondary)]">{result.templateUsed ?? "—"}</span>
+          </p>
+        )}
+        {emailFailed && (
+          <p className="text-[11px] text-[var(--status-warning)] mt-2">
+            Emotion detected but email did not send.
+          </p>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="w-px self-stretch" style={{ background: "var(--rule)" }} />
+
+      {/* Right — full Rekognition score breakdown, fixed order */}
+      <div className="flex-1 p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--ink-tertiary)] mb-2">
+          Expression Scores
+        </p>
+        <div className="flex flex-col gap-1.5">
+          {REKOGNITION_EMOTIONS.map((label) => {
+            const score = scores[label] ?? 0;
+            const isDominant = label === dominant;
+            return (
+              <div key={label}>
+                <div className="flex justify-between items-center mb-0.5">
+                  <span
+                    className={[
+                      "text-[11px] capitalize",
+                      isDominant
+                        ? "font-semibold text-[var(--ink-primary)]"
+                        : "font-medium text-[var(--ink-secondary)]",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    className={[
+                      "text-[11px] tabular-nums",
+                      isDominant
+                        ? "text-[var(--ink-primary)] font-medium"
+                        : "text-[var(--ink-tertiary)]",
+                    ].join(" ")}
+                  >
+                    {score.toFixed(0)}%
+                  </span>
+                </div>
+                <div
+                  className="h-1 rounded-full overflow-hidden"
+                  style={{ background: "var(--rule)" }}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, score)).toFixed(1)}%`,
+                      background: isDominant ? "var(--accent)" : "var(--ink-tertiary)",
+                      opacity: isDominant ? 1 : 0.45,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ResultPanel({ result }: { result: SubmissionResult }) {
   switch (result.status) {
+    // emotion_detected = Phase 1 done, awaiting user confirm.
+    // email_sent / email_failed = Phase 2 done (success or partial).
+    case "emotion_detected":
     case "email_sent":
-      return (
-        <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-success)" }}>
-          <p className="eyebrow mb-1" style={{ color: "var(--status-success)" }}>Analysis complete</p>
-          <p className="text-[13px] text-[var(--ink-secondary)]">Emotion: <span className="font-medium capitalize">{result.dominantEmotion.toLowerCase()}</span></p>
-          <p className="text-[13px] text-[var(--ink-secondary)]">Email sent: <span className="numeric">{result.emailSentAt ? new Date(result.emailSentAt).toLocaleTimeString() : "—"}</span></p>
-          <p className="text-[13px] text-[var(--ink-secondary)]">Template: <span className="font-medium">{result.templateUsed}</span></p>
-        </div>
-      );
+    case "email_failed":
+      return <RekognitionResultCard result={result} />;
     case "no_face_detected":
       return (
         <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-warning)" }}>
           <p className="eyebrow mb-1" style={{ color: "var(--status-warning)" }}>No face detected</p>
-          <p className="text-[13px] text-[var(--ink-secondary)]">Try retaking with better lighting.</p>
+          <p className="text-[13px] text-[var(--ink-secondary)]">AWS Rekognition could not find a face. Try retaking with better lighting.</p>
         </div>
       );
     case "invalid_file":
@@ -38,13 +205,6 @@ function ResultPanel({ result }: { result: SubmissionResult }) {
         <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-error)" }}>
           <p className="eyebrow mb-1" style={{ color: "var(--status-error)" }}>Invalid file</p>
           <p className="text-[13px] text-[var(--ink-secondary)]">Please upload a valid JPEG/PNG/WebP under 5 MB.</p>
-        </div>
-      );
-    case "email_failed":
-      return (
-        <div className="mt-3 border-l-2 pl-4 py-2" style={{ borderLeftColor: "var(--status-error)" }}>
-          <p className="eyebrow mb-1" style={{ color: "var(--status-error)" }}>Email failed</p>
-          <p className="text-[13px] text-[var(--ink-secondary)]">Emotion detected (<span className="capitalize">{result.dominantEmotion.toLowerCase()}</span>) but email failed to send.</p>
         </div>
       );
     default:
@@ -157,6 +317,51 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
     }
   }, [isStable]);
 
+  // ── Auto-analyse on snap/upload ─────────────────────────────────────────────
+  // Run Rekognition as soon as a blob is staged — email is NOT required at
+  // this point. The user can see the emotion + scores, then provide an email
+  // and click Send for Analysis when they're ready to actually send the email.
+  // analysisStartedForBlobRef ensures we only fire one analysis per blob.
+  const analysisStartedForBlobRef = useRef<Blob | null>(null);
+
+  useEffect(() => {
+    if (!imageBlob) {
+      analysisStartedForBlobRef.current = null;
+      return;
+    }
+    if (analysisStartedForBlobRef.current === imageBlob) return;
+    analysisStartedForBlobRef.current = imageBlob;
+
+    let cancelled = false;
+    setUploadState("analysing");
+    setUploadError(null);
+    setResult(null);
+    const addr = email.trim() || undefined;
+    (async () => {
+      try {
+        const res = await analysePhoto(addr, imageBlob, (msg) => {
+          if (!cancelled) setUploadStatus(msg);
+        });
+        if (cancelled) return;
+        setResult(res);
+        if (res.status === "no_face_detected" || res.status === "invalid_file") {
+          setUploadState("done");
+        } else {
+          setUploadState("analysed");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setUploadError((err as Error).message);
+        setUploadState("error");
+      }
+    })();
+    return () => { cancelled = true; };
+    // Intentionally omit `email` — analysis runs once per blob with whatever
+    // email was set at trigger time (or none); changing email later doesn't
+    // restart in-flight analysis. Email is consumed at confirm time anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageBlob]);
+
   // ── Snap ─────────────────────────────────────────────────────────────────────
   function handleSnap() {
     const video = videoElRef.current;
@@ -202,23 +407,21 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
     }
   }
 
-  // ── Submit photo ──────────────────────────────────────────────────────────
+  // ── Confirm + send email (phase 2) ──────────────────────────────────────────
   async function handleSubmit() {
-    if (!imageBlob) return;
-    if (!email.trim()) {
-      setUploadError("Please enter your email address before submitting.");
-      setUploadState("error");
+    if (!result?.submissionId) return;
+    const addr = email.trim();
+    if (!isValidEmailFormat(addr)) {
       document.getElementById("email")?.focus();
       return;
     }
-    setUploadState("uploading");
+    setUploadState("sending");
     setUploadError(null);
-    setResult(null);
     try {
-      const res = await submitPhoto(email.trim(), imageBlob, (msg) =>
+      const updated = await confirmAndSendEmail(result.submissionId, addr, (msg) =>
         setUploadStatus(msg)
       );
-      setResult(res);
+      setResult(updated);
       setUploadState("done");
     } catch (err) {
       setUploadError((err as Error).message);
@@ -309,12 +512,17 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
     setImageBlob(null);
     setImagePreviewUrl(null);
     setFileError(null);
+    setUploadState("idle");
+    setUploadError(null);
+    setResult(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   // ── Derived booleans ─────────────────────────────────────────────────────────
   const cameraLive = mode === "camera" && cameraState === "ready";
   const cameraSnapped = mode === "camera" && cameraState === "snapped";
+  const emailValid = isValidEmailFormat(email.trim());
+  const canSend = uploadState === "analysed" && emailValid;
 
   // ── Button style constants ────────────────────────────────────────────────────
   const PRIMARY_BTN = "bg-[var(--ink-primary)] text-[var(--bg-canvas)] py-2.5 text-[13px] font-semibold uppercase tracking-wider hover:bg-[var(--accent)] disabled:opacity-50 transition-colors w-full";
@@ -445,21 +653,25 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
             </button>
           )}
 
-          {/* Upload status / result */}
-          {uploadState === "uploading" && (
-            <p className="mt-3 text-sm text-center text-[var(--ink-tertiary)] animate-pulse">{uploadStatus}</p>
+          {/* Rekognition: analyzing → result | sending → result */}
+          {uploadState === "analysing" && <AnalyzingCard status={uploadStatus} />}
+          {(uploadState === "analysed" || uploadState === "sending" || uploadState === "done") &&
+            result && <ResultPanel result={result} />}
+          {uploadState === "sending" && (
+            <p className="mt-2 text-[12px] text-center text-[var(--ink-tertiary)] animate-pulse">
+              {uploadStatus || "Sending email…"}
+            </p>
           )}
           {uploadState === "error" && (
             <p className="mt-3 text-sm text-center text-[var(--status-error)]">{uploadError}</p>
           )}
-          {uploadState === "done" && result && <ResultPanel result={result} />}
 
           {/* Post-snap action buttons */}
-          {cameraSnapped && uploadState !== "done" && (
-            <div className="mt-3 flex gap-3">
+          {cameraSnapped && uploadState !== "done" && uploadState !== "error" && (
+            <div className="mt-2 flex gap-3">
               <button
                 onClick={handleRetake}
-                disabled={uploadState === "uploading"}
+                disabled={uploadState === "sending"}
                 className={SECONDARY_BTN}
                 style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
@@ -467,13 +679,28 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={uploadState === "uploading"}
+                disabled={!canSend && uploadState !== "sending"}
                 className={PRIMARY_BTN}
                 style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
-                {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
+                {uploadState === "sending"
+                  ? "Sending…"
+                  : uploadState === "analysing"
+                  ? "Analyzing…"
+                  : uploadState === "analysed" && !emailValid
+                  ? "Enter email to send"
+                  : "Send for Analysis"}
               </button>
             </div>
+          )}
+          {cameraSnapped && uploadState === "error" && (
+            <button
+              onClick={handleRetake}
+              className={SECONDARY_BTN}
+              style={{ borderRadius: 2, letterSpacing: "0.08em" }}
+            >
+              Retake
+            </button>
           )}
           {uploadState === "done" && (
             <button
@@ -523,47 +750,68 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
             </div>
           ) : (
             /* Upload preview */
-            <div className="relative w-full" style={{ aspectRatio: "4 / 3" }}>
-              <img
-                src={imagePreviewUrl}
-                alt="Uploaded photo"
-                className="w-full h-full object-cover"
-                style={{ borderRadius: 2 }}
-              />
-            </div>
+            <>
+              <div className="relative w-full" style={{ aspectRatio: "4 / 3" }}>
+                <img
+                  src={imagePreviewUrl}
+                  alt="Uploaded photo"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ borderRadius: 2 }}
+                />
+              </div>
+            </>
           )}
 
           {fileError && (
             <p className="mt-2 text-xs text-[var(--status-error)] text-center">{fileError}</p>
           )}
 
-          {uploadState === "uploading" && (
-            <p className="mt-3 text-sm text-center text-[var(--ink-tertiary)] animate-pulse">{uploadStatus}</p>
+          {uploadState === "analysing" && <AnalyzingCard status={uploadStatus} />}
+          {(uploadState === "analysed" || uploadState === "sending" || uploadState === "done") &&
+            result && <ResultPanel result={result} />}
+          {uploadState === "sending" && (
+            <p className="mt-2 text-[12px] text-center text-[var(--ink-tertiary)] animate-pulse">
+              {uploadStatus || "Sending email…"}
+            </p>
           )}
           {uploadState === "error" && (
             <p className="mt-3 text-sm text-center text-[var(--status-error)]">{uploadError}</p>
           )}
-          {uploadState === "done" && result && <ResultPanel result={result} />}
 
-          {imagePreviewUrl && uploadState !== "done" && (
+          {imagePreviewUrl && uploadState !== "done" && uploadState !== "error" && (
             <div className="mt-3 flex flex-col gap-2">
               <button
                 onClick={handleSubmit}
-                disabled={uploadState === "uploading"}
+                disabled={!canSend && uploadState !== "sending"}
                 className={PRIMARY_BTN}
                 style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
-                {uploadState === "uploading" ? "Sending…" : "Send for Analysis"}
+                {uploadState === "sending"
+                  ? "Sending…"
+                  : uploadState === "analysing"
+                  ? "Analyzing…"
+                  : uploadState === "analysed" && !emailValid
+                  ? "Enter email to send"
+                  : "Send for Analysis"}
               </button>
               <button
                 onClick={handleChooseDifferent}
-                disabled={uploadState === "uploading"}
+                disabled={uploadState === "sending"}
                 className={SECONDARY_BTN}
                 style={{ borderRadius: 2, letterSpacing: "0.08em" }}
               >
                 Choose Different
               </button>
             </div>
+          )}
+          {imagePreviewUrl && uploadState === "error" && (
+            <button
+              onClick={handleChooseDifferent}
+              className={["mt-3", SECONDARY_BTN].join(" ")}
+              style={{ borderRadius: 2, letterSpacing: "0.08em" }}
+            >
+              Choose Different
+            </button>
           )}
           {uploadState === "done" && (
             <button

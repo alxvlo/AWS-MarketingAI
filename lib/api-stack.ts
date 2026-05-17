@@ -14,6 +14,7 @@ interface ApiStackProps extends cdk.StackProps {
 
 export class ApiStack extends cdk.Stack {
   public readonly getResultFunction: lambda.IFunction;
+  public readonly confirmResultFunction: lambda.IFunction;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -35,11 +36,25 @@ export class ApiStack extends cdk.Stack {
     this.getResultFunction = getResultFn;
     submissionsTable.grantReadData(getResultFn);
 
+    // Lambda: POST /confirm/{submissionId} → flip confirmed=true so send-email fires
+    const confirmResultFn = new NodejsFunction(this, 'ConfirmResultFunction', {
+      entry: path.join(__dirname, '../lambdas/confirm-result/index.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        TABLE_NAME: submissionsTable.tableName,
+        REGION: this.region,
+      },
+    });
+    this.confirmResultFunction = confirmResultFn;
+    submissionsTable.grantWriteData(confirmResultFn);
+
     const api = new apigateway.RestApi(this, 'ResultsApi', {
       restApiName: 'satisfaction-meter-results',
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: ['GET', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
       },
     });
 
@@ -62,9 +77,17 @@ export class ApiStack extends cdk.Stack {
     const submission = results.addResource('{submissionId}');
     submission.addMethod('GET', new apigateway.LambdaIntegration(getResultFn));
 
+    const confirm = api.root.addResource('confirm');
+    const confirmSubmission = confirm.addResource('{submissionId}');
+    confirmSubmission.addMethod('POST', new apigateway.LambdaIntegration(confirmResultFn));
+
     new cdk.CfnOutput(this, 'ResultsApiUrl', {
       value: `${api.url}results`,
       description: 'GET /results/{submissionId} endpoint',
+    });
+    new cdk.CfnOutput(this, 'ConfirmApiUrl', {
+      value: `${api.url}confirm`,
+      description: 'POST /confirm/{submissionId} endpoint',
     });
   }
 }

@@ -19,73 +19,45 @@ const SKIP_EMOTIONS = new Set(['no_face_detected', 'invalid_file']);
 type EmotionTemplate = { subject: string; body: string };
 
 const TEMPLATES: Record<string, EmotionTemplate> = {
-  happy_v1: {
+  happy: {
     subject: 'You seem happy! Share your experience 😊',
     body: `Hi there,\n\nWe noticed you're in a great mood! We'd love it if you could take a moment to leave us a review.\n\nThank you for being an amazing customer!\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  sad_v1: {
+  sad: {
     subject: 'We want to make it up to you 💙',
     body: `Hi there,\n\nWe're sorry you're having a tough time. Please accept this exclusive 20% discount on your next purchase.\n\nUse code: CHEER20\n\nWe hope to brighten your day!\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  surprised_v1: {
+  surprised: {
     subject: '⚡ Flash Deal — Just for You!',
     body: `Hi there,\n\nSurprise! We have an exclusive flash deal available right now — limited time only.\n\nCheck it out before it's gone!\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  angry_v1: {
+  angry: {
     subject: 'We sincerely apologise 🙏',
     body: `Hi there,\n\nWe can see something may have gone wrong and we truly apologise. Please accept a 30% discount as our way of saying sorry.\n\nUse code: SORRY30\n\nOur customer support team is ready to help: support@satisfactionmeter.com\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  neutral_v1: {
+  neutral: {
     subject: 'A special offer just for you',
     body: `Hi there,\n\nWe have a general offer we think you'll love. Check out our latest deals tailored just for you!\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  disgusted_v1: {
+  disgusted: {
     subject: 'We want to hear from you',
     body: `Hi there,\n\nWe noticed something might be off and we'd really like to hear your feedback. Your opinion helps us improve.\n\nPlease reach out to us at support@satisfactionmeter.com\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  fearful_v1: {
+  fear: {
     subject: "We're here to help",
     body: `Hi there,\n\nWe want you to know that we're here for you. If you have any concerns or need assistance, please don't hesitate to reach out.\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  calm_v1: {
+  calm: {
     subject: 'Exclusive member offer for you',
     body: `Hi there,\n\nEnjoy this exclusive member offer we've curated just for you. We appreciate your loyalty!\n\nBest regards,\nSatisfaction Meter Team`,
   },
-  happy_v2: {
-    subject: 'Your smile made our day! 😄',
-    body: `Hi there,\n\nYour positive energy is contagious! We'd love to feature your story. Reply to this email if you'd like to be highlighted as a customer of the month.\n\nThank you,\nSatisfaction Meter Team`,
-  },
-  sad_v2: {
-    subject: 'A little something to brighten your day 🌟',
-    body: `Hi there,\n\nHard days happen to everyone. Here's a 15% discount — no strings attached — to treat yourself.\n\nUse code: LIFT15\n\nTake care,\nSatisfaction Meter Team`,
-  },
-  surprised_v2: {
-    subject: 'Something unexpected is waiting for you!',
-    body: `Hi there,\n\nYou look like someone who loves a good surprise. We've unlocked an early-access deal just for you.\n\nLog in to see what's waiting!\n\nBest,\nSatisfaction Meter Team`,
-  },
-  angry_v2: {
-    subject: "Let's make this right 🤝",
-    body: `Hi there,\n\nWe heard you and we want to do better. A dedicated support agent is standing by — just reply to this email and we'll resolve things personally.\n\nWe also want to offer you 25% off your next purchase.\n\nUse code: RESOLVE25\n\nBest regards,\nSatisfaction Meter Team`,
-  },
-  neutral_v2: {
-    subject: 'New arrivals picked for you',
-    body: `Hi there,\n\nBased on your interests, we've put together a personalised selection of new arrivals. Take a look — something might catch your eye!\n\nBest,\nSatisfaction Meter Team`,
-  },
-  disgusted_v2: {
-    subject: 'Your feedback matters to us',
-    body: `Hi there,\n\nWe noticed something might not be right. We'd love a chance to understand your experience better — your honest feedback shapes how we improve.\n\nReply or reach us at support@satisfactionmeter.com\n\nThank you,\nSatisfaction Meter Team`,
-  },
-  fearful_v2: {
-    subject: "You're in good hands 🤗",
-    body: `Hi there,\n\nWhatever's on your mind, our team is ready to listen and help. Reach out any time — no issue is too small.\n\nWe're here,\nSatisfaction Meter Team`,
-  },
-  calm_v2: {
-    subject: 'A reward for your loyalty',
-    body: `Hi there,\n\nYour continued support means everything to us. Enjoy an exclusive loyalty reward as a token of our appreciation.\n\nBest,\nSatisfaction Meter Team`,
+  confused: {
+    subject: 'Need a hand? We can help',
+    body: `Hi there,\n\nLooks like things might be unclear. Reach out to our team at support@satisfactionmeter.com and we'll walk you through anything you need.\n\nBest regards,\nSatisfaction Meter Team`,
   },
 };
 
-const DEFAULT_TEMPLATE: EmotionTemplate = TEMPLATES['neutral_v1'];
+const DEFAULT_TEMPLATE: EmotionTemplate = TEMPLATES['neutral'];
 
 export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
   for (const record of event.Records) {
@@ -95,6 +67,9 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
     const item = unmarshall(record.dynamodb.NewImage as Record<string, AttributeValue>);
 
     if (!item.dominantEmotion || item.emailSentAt) continue;
+    // Email is only sent after the user explicitly confirms in the UI.
+    // confirmed=true is written by the /confirm/{submissionId} endpoint.
+    if (item.confirmed !== true) continue;
 
     const { submissionId, email, dominantEmotion } = item;
     if (!email || !submissionId) continue;
@@ -110,8 +85,7 @@ export const handler = async (event: DynamoDBStreamEvent): Promise<void> => {
       continue;
     }
 
-    const variant = Math.random() < 0.5 ? 'v1' : 'v2';
-    const templateKey = `${dominantEmotion}_${variant}`;
+    const templateKey = dominantEmotion;
     const template = TEMPLATES[templateKey] ?? DEFAULT_TEMPLATE;
 
     try {

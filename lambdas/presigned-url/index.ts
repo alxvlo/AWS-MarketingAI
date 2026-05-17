@@ -27,9 +27,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       emailMasked: email ? email.replace(/(.{2}).+(@.+)/, '$1***$2') : '',
     });
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      log('WARN', 'presigned-url', 'validation_failed', '', { reason: 'invalid_email' });
-      return respond(400, { message: 'Valid email is required.' });
+    // Email is optional at upload time — Rekognition analysis runs without it
+    // so the user can see the emotion before deciding whether to send.
+    // The /confirm endpoint sets the email and triggers the SES dispatch.
+    // If supplied here we still validate format and store it so the user can
+    // skip retyping at confirm time.
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      log('WARN', 'presigned-url', 'validation_failed', '', { reason: 'invalid_email_format' });
+      return respond(400, { message: 'If provided, email must be a valid address.' });
     }
     if (!contentType || !ALLOWED_CONTENT_TYPES.includes(contentType)) {
       log('WARN', 'presigned-url', 'validation_failed', '', { reason: 'invalid_content_type', contentType });
@@ -62,7 +67,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       TableName: TABLE_NAME,
       Item: {
         submissionId,
-        email,
+        ...(email ? { email } : {}),
         s3Key,
         status: 'pending',
         timestamp: new Date().toISOString(),

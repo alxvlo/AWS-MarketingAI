@@ -33,7 +33,6 @@ export default function FaceOverlay({ videoEl, onDetectionChange, onUnavailable 
     let cancelled = false;
 
     async function run() {
-      // Dynamic import keeps face-api.js out of the SSR bundle
       const faceapi = await import("face-api.js");
 
       if (!faceapi.nets.tinyFaceDetector.isLoaded) {
@@ -45,23 +44,21 @@ export default function FaceOverlay({ videoEl, onDetectionChange, onUnavailable 
       async function detect() {
         if (cancelled || !videoEl || !canvas) return;
 
-        // Skip until the video stream is actually playing
         if (videoEl.readyState < 2 || videoEl.videoWidth === 0) {
           rafId = requestAnimationFrame(detect);
           return;
         }
 
-        // Sync canvas pixel space to the video's intrinsic resolution once.
-        // The canvas is CSS-scaled to fill the container via w-full h-full,
-        // so detection box coordinates map directly without manual scaling.
         if (canvas.width !== videoEl.videoWidth) {
           canvas.width = videoEl.videoWidth;
           canvas.height = videoEl.videoHeight;
         }
 
+        // Face presence only — emotion classification is handled exclusively
+        // by AWS Rekognition after submission. face-api is overlay/UX only.
         const result = await faceapi.detectSingleFace(
           videoEl,
-          new faceapi.TinyFaceDetectorOptions()
+          new faceapi.TinyFaceDetectorOptions(),
         );
 
         if (cancelled || !canvas) return;
@@ -78,7 +75,6 @@ export default function FaceOverlay({ videoEl, onDetectionChange, onUnavailable 
           ctx.strokeRect(x, y, width, height);
           callbackRef.current(true);
         } else {
-          // Guide frame: 60% wide, 80% tall, centered
           const gx = canvas.width * 0.2;
           const gy = canvas.height * 0.1;
           const gw = canvas.width * 0.6;
@@ -95,7 +91,6 @@ export default function FaceOverlay({ videoEl, onDetectionChange, onUnavailable 
     }
 
     run().catch((err) => {
-      // WebGL / TF.js init failure — face detection is UX-only, so degrade gracefully
       console.warn("Face detection unavailable:", (err as Error).message);
       if (!cancelled) onUnavailableRef.current?.();
     });
