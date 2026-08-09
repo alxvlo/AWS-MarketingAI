@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import FaceOverlay from "@/components/FaceOverlay";
 import { analysePhoto, confirmAndSendEmail, SubmissionResult } from "@/lib/api";
 
@@ -586,10 +587,13 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
 
             {/* Snapped preview */}
             {cameraSnapped && imagePreviewUrl && (
-              <img
+              <Image
                 src={imagePreviewUrl}
                 alt="Captured photo"
-                className="w-full h-full object-cover"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                unoptimized
+                className="object-cover"
                 style={{ borderRadius: 2 }}
               />
             )}
@@ -750,16 +754,17 @@ export default function WebcamFeed({ email }: WebcamFeedProps) {
             </div>
           ) : (
             /* Upload preview */
-            <>
-              <div className="relative w-full" style={{ aspectRatio: "4 / 3" }}>
-                <img
-                  src={imagePreviewUrl}
-                  alt="Uploaded photo"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ borderRadius: 2 }}
-                />
-              </div>
-            </>
+            <div className="relative w-full" style={{ aspectRatio: "4 / 3" }}>
+              <Image
+                src={imagePreviewUrl}
+                alt="Uploaded photo"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                unoptimized
+                className="object-cover"
+                style={{ borderRadius: 2 }}
+              />
+            </div>
           )}
 
           {fileError && (

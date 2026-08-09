@@ -24,7 +24,9 @@ export default function SubmissionsAuditCard() {
     fetchSubmissions().then(setData).catch(e => setErr((e as Error).message));
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetchSubmissions().then(setData).catch(e => setErr((e as Error).message));
+  }, []);
 
   // Audit trail shows every submission that Rekognition successfully analysed
   // — emotion_detected (Phase 1 complete, awaiting user confirm), email_sent
@@ -44,13 +46,11 @@ export default function SubmissionsAuditCard() {
     () => Math.max(1, Math.ceil(visibleSubmissions.length / PAGE_SIZE)),
     [visibleSubmissions]
   );
+  const currentPage = Math.min(page, totalPages);
   const pageItems = useMemo(
-    () => visibleSubmissions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [visibleSubmissions, page]
+    () => visibleSubmissions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [visibleSubmissions, currentPage]
   );
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
 
   return (
     <Card
@@ -97,23 +97,23 @@ export default function SubmissionsAuditCard() {
             {/* Pagination footer */}
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--rule)] text-[12px]">
               <span className="text-[var(--ink-tertiary)] numeric">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, visibleSubmissions.length)} of {visibleSubmissions.length}
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, visibleSubmissions.length)} of {visibleSubmissions.length}
               </span>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page <= 1}
+                  disabled={currentPage <= 1}
                   className="px-3 py-1 uppercase tracking-wider font-semibold text-[var(--ink-secondary)] hover:text-[var(--accent)] disabled:opacity-30 disabled:hover:text-[var(--ink-secondary)] disabled:cursor-not-allowed transition-colors"
                   style={{ letterSpacing: "0.12em" }}
                 >
                   Prev
                 </button>
                 <span className="numeric text-[var(--ink-secondary)]">
-                  Page <span className="text-[var(--ink-primary)] font-semibold">{page}</span> of <span className="text-[var(--ink-primary)] font-semibold">{totalPages}</span>
+                  Page <span className="text-[var(--ink-primary)] font-semibold">{currentPage}</span> of <span className="text-[var(--ink-primary)] font-semibold">{totalPages}</span>
                 </span>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
+                  disabled={currentPage >= totalPages}
                   className="px-3 py-1 uppercase tracking-wider font-semibold text-[var(--ink-secondary)] hover:text-[var(--accent)] disabled:opacity-30 disabled:hover:text-[var(--ink-secondary)] disabled:cursor-not-allowed transition-colors"
                   style={{ letterSpacing: "0.12em" }}
                 >

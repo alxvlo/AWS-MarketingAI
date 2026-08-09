@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-05-08 (CloudFront trailing-slash redirect fix; Jira board sync)  
+**Last updated**: 2026-08-10 (frontend hosting migrated from CloudFront/S3 to Vercel)
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -57,21 +57,22 @@ Addressing consultation feedback + known bugs from testing.
 - [x] GitHub Actions + OIDC pipeline (cdk synth → test → cdk deploy on push to main)
 - [x] No stored AWS credentials in GitHub secrets — OIDC via GitHubActionsDeployRole
 
-### 2E — Frontend Hosting (CloudFront)
+### 2E — Frontend Hosting (Vercel)
 - [x] Static export: `next.config.ts` with `output: "export"`, `trailingSlash: true`
-- [x] CDK `WebStack`: private S3 bucket + CloudFront distribution with OAC + CloudFront Function for subdirectory index rewrite (lib/web-stack.ts)
-- [x] GitHub Actions workflow `frontend-deploy.yml`: build → `aws s3 sync` → CloudFront invalidation
+- [x] Vercel project config: repo-level `vercel.json` points Vercel at `frontend/`, uses Next.js, `npm ci`, and `npm run build`
+- [x] Frontend runtime pinned to Node 22 via `frontend/package.json`
+- [x] Removed legacy GitHub Actions workflow `frontend-deploy.yml` for S3 sync and CloudFront invalidation
+- [x] Removed CDK `WebStack` from the active CDK app; frontend hosting is no longer provisioned by AWS CDK
 - [x] Path filters on `deploy.yml` so backend deploys ignore `frontend/**`
-- [x] Extend GitHubActionsDeployRole with S3 write + cloudfront:CreateInvalidation
-- [x] Smoke test: `/`, `/login/`, `/home/` all return 200 on CloudFront URL
-- [x] CloudFront Function updated: bare paths (`/login`, `/home`) now 301-redirect to trailing-slash canonical URL before index.html rewrite fires — fixes 404 on direct navigation without trailing slash (`lib/web-stack.ts`, deployed 2026-05-08)
+- [x] S3 upload bucket CORS allows custom domain, `www`, Vercel preview domains, and localhost
+- [ ] Import repo into Vercel and configure `NEXT_PUBLIC_*` environment variables for Production, Preview, and Development
+- [ ] Smoke test: `/`, `/login/`, `/home/` all return 200 on the Vercel production URL
 - [x] Add 3 DKIM CNAMEs at name.com for SES domain verification (`satisfactionmeter.live`)
 - [x] Verify sender email `noreply@satisfactionmeter.live` in SES console (ap-southeast-1)
-- [x] Request ACM cert in `us-east-1` for `satisfactionmeter.live` (DNS validated, cert issued)
-- [x] Attach ACM cert to CloudFront distribution + configure apex domain alias (`satisfactionmeter.live`)
+- [ ] Point `satisfactionmeter.live` and `www.satisfactionmeter.live` DNS at Vercel after production deploy is verified; preserve SES DNS records
 - [ ] Confirm SES production access approval from AWS (request submitted 2026-05-02; ~24-48h)
-- [x] Full end-to-end smoke test: webcam → upload → email flow on the CloudFront URL — pipeline verified 2026-05-06; use alexvelo199@gmail.com for browser test
-- [ ] Tighten API Gateway + S3 image bucket CORS from `*` to the CloudFront origin (`satisfactionmeter.live`)
+- [ ] Full end-to-end smoke test: webcam → upload → email flow on the Vercel URL; use alexvelo199@gmail.com for browser test
+- [ ] Destroy orphaned `SatisfactionMeterWeb` CloudFormation stack after DNS cutover is complete
 
 ---
 
@@ -118,15 +119,16 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-05-01 | SES sandbox — prior decision | Was: no domain, sandbox only. **Superseded 2026-05-02** by domain acquisition. See rows below. |
 | 2026-05-02 | Domain `satisfactionmeter.live` acquired at name.com | Enables SES production access request and custom CloudFront apex domain |
 | 2026-05-02 | SES production access request submitted | Removes manually-verified-only limit once AWS approves (~24-48h). Sender: `noreply@satisfactionmeter.live` |
-| 2026-05-02 | ACM cert issued in `us-east-1` (not ap-southeast-1) | CloudFront requires certs in us-east-1 regardless of app region — single approved cross-region resource |
-| 2026-05-02 | Custom apex domain `satisfactionmeter.live` configured on CloudFront | DKIM CNAMEs added at name.com; ACM cert attached to distribution; apex domain live |
+| 2026-05-02 | ACM cert issued in `us-east-1` (not ap-southeast-1) | Historical CloudFront setup; superseded by Vercel frontend hosting on 2026-08-10 |
+| 2026-05-02 | Custom apex domain `satisfactionmeter.live` configured on CloudFront | Historical CloudFront setup; DNS should move to Vercel after production deploy verification |
 | 2026-04-23 | SES only (no SMS/Pinpoint) | Cost and complexity not justified |
 | 2026-04-23 | GitHub Actions + OIDC over CodePipeline | Team is GitHub-native; no stored AWS creds |
 | 2026-04-23 | ap-southeast-1 region | Latency from PH; no data-residency constraints |
-| 2026-05-02 | Frontend hosted on CloudFront + S3, not Vercel | Stays inside the single AWS account (no extra vendor accounts), keeps the project AWS-native per CLAUDE.md, and CloudFront's "always free" 1TB/month tier covers expected traffic. Static export is sufficient — no SSR/ISR needed. |
+| 2026-05-02 | Frontend hosted on CloudFront + S3, not Vercel | Superseded 2026-08-10 by user request to host the website on Vercel. |
 | 2026-05-06 | Backend CDK stack drifted from deployed state — submit button fix deferred to post-redeploy | All commits since Phase 2D were frontend-only, so deploy.yml never fired. Deployed capture stack requires x-api-key header and deprecated fileSize field; current repo code has neither. Redeploy required before end-to-end test can pass. |
 | 2026-05-07 | Removed 24h email frequency cap (`EmailFrequencyCapTable` + Lambda check + IAM grant + env wiring) | OPTIONAL Phase 4 polish but actively blocked demo workflow: only 1 verified SES recipient (`alexvelo199@gmail.com`) and SES production access still pending after 5 days. Same change set fixed a class of frontend polling-hang bugs by writing honest terminal statuses for `no_face_detected` / `invalid_file` paths and exiting `pollResult` on any terminal status. Verified end-to-end live: 3+ back-to-back submissions all reached `email_sent`. See commits `c75b974`, `a9d0823`, `ca03439`. |
 | 2026-05-07 | `next.config.ts` `output: 'export'` is now conditional on `!isDev` | Static export config blocked the `force-dynamic` admin API route in `next dev` even after the route was renamed to `route.dev.ts`. Production build/deploy unaffected — only local dev mode now runs full Next.js so the dev-only admin audit page can serve. |
 | 2026-05-08 | Frontend reorganized to admin-only: `/login/` → `/home/` (unified emotion + admin grid) | User pivot — no public end-user; admin runs demo and views analytics from one screen |
 | 2026-05-08 | Editorial design system (Newsreader serif + warm neutrals + single rust accent) | huashu-design single-direction overhaul — replaces the slate/indigo Tailwind defaults |
 | 2026-05-08 | CloudFront Function extended to 301-redirect bare page routes to trailing-slash canonical | S3 REST API (OAC) has no directory-index concept; bare `/login` returned 403→404. Fixed in `lib/web-stack.ts` and deployed to `SatisfactionMeterWeb` stack. |
+| 2026-08-10 | Frontend hosting moved to Vercel; AWS remains backend-only | User requested Vercel website hosting. `vercel.json` records `frontend/` as project root; `frontend-deploy.yml` and `WebStack` were removed from source. AWS API Gateway, S3 uploads, Rekognition, DynamoDB, SES, admin auth, analytics, and observability stay in CDK. |

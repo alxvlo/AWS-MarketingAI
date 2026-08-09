@@ -25,5 +25,6 @@ frontend/.env*.local
 # Investigation artifacts — playwright captures, ad-hoc screenshots, scratch plans
 .playwright-mcp/
 .claude/plan/
+.claude/worktrees/
 live-*.png
 local-*.png

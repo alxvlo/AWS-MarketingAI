@@ -32,7 +32,12 @@ export class CaptureStack extends cdk.Stack {
       cors: [
         {
           allowedMethods: [s3.HttpMethods.PUT],
-          allowedOrigins: ['https://satisfactionmeter.live', 'http://localhost:3000'],
+          allowedOrigins: [
+            'https://satisfactionmeter.live',
+            'https://www.satisfactionmeter.live',
+            'https://*.vercel.app',
+            'http://localhost:3000',
+          ],
           allowedHeaders: ['*'],
           maxAge: 3000,
         },

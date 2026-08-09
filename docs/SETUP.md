@@ -1,6 +1,6 @@
 # Satisfaction Meter — Team Setup Guide
 
-This guide gets you from zero to a working local dev environment and a successful `cdk deploy`.  
+This guide gets you from zero to a working local dev environment, a successful AWS backend deploy, and a Vercel-hosted frontend.
 **Region**: `ap-southeast-1` (Singapore) — all AWS resources live here.
 
 ---
@@ -135,7 +135,7 @@ This is a one-time setup per machine. If it's already been run before by someone
 cdk deploy --all
 ```
 
-This deploys all stacks (`SatisfactionMeterCapture`, `SatisfactionMeterInference`, `SatisfactionMeterMessaging`, `SatisfactionMeterApi`, `SatisfactionMeterAnalytics`, `SatisfactionMeterObservability`).
+This deploys the AWS backend stacks (`SatisfactionMeterCapture`, `SatisfactionMeterInference`, `SatisfactionMeterMessaging`, `SatisfactionMeterApi`, `SatisfactionMeterAnalytics`, `SatisfactionMeterAdminAuth`, `SatisfactionMeterObservability`).
 
 To deploy a single stack:
 ```bash
@@ -143,6 +143,29 @@ cdk deploy SatisfactionMeterCapture
 ```
 
 After deployment, the terminal will print the API endpoint URLs. These are also saved in `cdk.out/deploy-outputs.json`.
+
+---
+
+## Vercel Frontend Hosting
+
+The Next.js frontend deploys from `frontend/` through Vercel Git integration. The repo includes `vercel.json` so Vercel uses:
+
+- Root Directory: `frontend`
+- Framework: Next.js
+- Install Command: `npm ci`
+- Build Command: `npm run build`
+- Node.js: 22.x
+
+Configure these Vercel environment variables in Production, Preview, and Development:
+
+```
+NEXT_PUBLIC_UPLOAD_API
+NEXT_PUBLIC_RESULTS_API
+NEXT_PUBLIC_ANALYTICS_API
+NEXT_PUBLIC_ADMIN_API
+```
+
+After the Vercel production deployment is verified, point `satisfactionmeter.live` and `www.satisfactionmeter.live` at the Vercel project. Preserve SES DKIM/TXT DNS records.
 
 ---
 
@@ -218,7 +241,7 @@ AWS-MarketingAI/
 ├── frontend/                 # Frontend: Next.js 16 + React 19 + Tailwind 4
 │   ├── app/                      # Pages (customer portal + admin)
 │   ├── components/               # WebcamFeed, FaceOverlay
-│   └── lib/                      # API client, mock analytics
+│   └── lib/                      # API, analytics, and admin clients
 ├── docs/                     # roadmap.md, SETUP.md, presentation, architecture PDF
 ├── scripts/                  # Helper scripts (e.g. push-tickets.sh)
 └── CLAUDE.md                 # AI assistant context

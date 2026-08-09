@@ -8,13 +8,12 @@ const isDev = process.env.NODE_ENV === "development";
 const projectRoot = path.resolve(process.cwd());
 
 const nextConfig: NextConfig = {
-  // Static export only in production builds (frontend/out/ → S3 + CloudFront).
-  // Dev mode runs full Next.js so the dev-only admin API route at
-  // app/api/admin/submissions/route.dev.ts can serve.
+  // Static export only in production builds. Vercel hosts the exported frontend
+  // while AWS continues to provide the backend APIs and presigned S3 upload flow.
+  // Dev mode runs full Next.js so .dev route files can serve locally.
   ...(isDev ? {} : { output: "export" }),
 
-  // Force trailing slashes so URLs map cleanly to S3 keys (e.g. /admin/ → /admin/index.html).
-  // Without this, /admin would 404 on S3 because the key is admin/index.html.
+  // Keep page URLs canonical and compatible with the existing exported route shape.
   trailingSlash: true,
 
   // next/image's default loader requires a Node runtime; static export needs the unoptimized loader.

@@ -24,12 +24,15 @@ export function useAuth() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setT(getToken());
-    setHydrated(true);
+    const hydrate = window.setTimeout(() => {
+      setT(getToken());
+      setHydrated(true);
+    }, 0);
     const onChange = () => setT(getToken());
     window.addEventListener("sm-auth-change", onChange);
     window.addEventListener("storage", onChange);
     return () => {
+      window.clearTimeout(hydrate);
       window.removeEventListener("sm-auth-change", onChange);
       window.removeEventListener("storage", onChange);
     };

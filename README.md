@@ -1,7 +1,7 @@
 # Satisfaction Meter
-**Emotion-Driven Marketing via AWS**
+**Emotion-Driven Marketing via AWS + Vercel**
 
-A serverless web application that detects a customer's facial emotion from a photo and automatically dispatches a personalised marketing email matched to their mood — all in under 5 seconds, built entirely on AWS managed services.
+A serverless web application that detects a customer's facial emotion from a photo and automatically dispatches a personalised marketing email matched to their mood — all in under 5 seconds. Vercel hosts the Next.js frontend; AWS managed services handle upload, inference, persistence, messaging, and observability.
 
 ---
 
@@ -35,6 +35,9 @@ A serverless web application that detects a customer's facial emotion from a pho
         ▼
 [Browser / End User]
         │  (1) POST /upload — request presigned URL
+        ▼
+[Vercel-hosted Next.js frontend]
+        │
         ▼
 [API Gateway] ──► [Lambda: URL Generator] ──► returns presigned S3 PUT URL
         │
@@ -81,6 +84,7 @@ Images never pass through a Lambda proxy — they go directly from the browser t
 | Layer | Service | Role |
 |---|---|---|
 | Webcam Capture | Browser MediaDevices API + face-api.js (client-side) | Live face-detection overlay; auto-snap on stable face; manual upload fallback |
+| Frontend Hosting | Vercel | Hosts the static Next.js export from `frontend/` with Git-based preview and production deployments |
 | Upload | API Gateway + Lambda + S3 | Presigned URL generation, direct browser-to-S3 upload |
 | Emotion Detection | Lambda + Amazon Rekognition | S3 event trigger → `DetectFaces` → dominant emotion |
 | Messaging | Lambda + Amazon SES | Emotion-to-template mapping, transactional email dispatch |
@@ -92,11 +96,11 @@ Images never pass through a Lambda proxy — they go directly from the browser t
 | Infrastructure | AWS CDK (TypeScript) | Five stacks: `capture`, `inference`, `messaging`, `api`, `analytics` |
 | Identity | AWS IAM | Least-privilege role per Lambda |
 | Config | SSM Parameter Store | Runtime credentials and config (free alternative to Secrets Manager) |
-| CI/CD | GitHub Actions + OIDC | Push to `main` → synth → test → deploy; no stored AWS credentials |
+| CI/CD | Vercel Git + GitHub Actions OIDC | Vercel deploys the frontend; GitHub Actions deploys AWS backend stacks with OIDC and no stored AWS credentials |
 | Observability | Amazon CloudWatch | Lambda errors, Rekognition latency, SES delivery metrics |
 
 **Region**: `ap-southeast-1` (Singapore)  
-**Target cost**: $0 — all services operate within AWS free tier limits
+**Target cost**: $0 — AWS backend services operate within free tier limits; Vercel frontend hosting uses the free project tier
 
 ---
 
@@ -110,19 +114,20 @@ AWS-MarketingAI/
 │   ├── inference-stack.ts        # Rekognition Lambda + DynamoDB + DLQ
 │   ├── messaging-stack.ts        # SES dispatch Lambda + DLQ
 │   ├── api-stack.ts              # GET /results endpoint
-│   └── analytics-stack.ts        # Analytics Lambdas + Lambda Authorizer + campaigns table (Phase 3)
+│   └── analytics-stack.ts        # Analytics Lambdas + Lambda Authorizer + campaigns table
 ├── lambdas/                  # Lambda handler source files
 ├── frontend/                 # Frontend: Next.js 16 + React 19 + Tailwind 4
 │   ├── app/
 │   │   ├── page.tsx              # Customer webcam capture page
-│   │   ├── admin/page.tsx        # Admin login page
-│   │   └── admin/dashboard/      # Admin analytics dashboard (Phase 3B)
+│   │   ├── login/page.tsx        # Admin login page
+│   │   └── home/page.tsx         # Admin analytics dashboard
 │   ├── components/
 │   │   ├── WebcamFeed.tsx        # Webcam + file-upload component
 │   │   └── FaceOverlay.tsx       # face-api.js detection overlay
 │   ├── lib/
 │   │   ├── api.ts                # Upload API + presigned URL + polling
-│   │   └── mockAnalytics.ts      # Mock analytics data (pending AWS-70)
+│   │   ├── analytics.ts          # Analytics API client
+│   │   └── adminApi.ts           # Admin auth/submissions API client
 │   └── public/models/            # face-api.js model weights
 ├── docs/                     # Project docs (roadmap, setup, presentation, architecture PDF)
 ├── scripts/                  # Helper scripts (e.g. push-tickets.sh)
@@ -133,7 +138,7 @@ AWS-MarketingAI/
 
 ## Setup Guide
 
-Follow these steps to set up the project on your local machine and deploy to AWS.
+Follow these steps to set up the project on your local machine and deploy the AWS backend. The frontend is deployed by Vercel from the `frontend/` directory.
 
 ### 1. Prerequisites
 
@@ -278,6 +283,25 @@ cdk deploy SatisfactionMeterCapture
 
 After deployment, the terminal prints the API endpoint URLs. These are also saved in `cdk.out/deploy-outputs.json`.
 
+### 8. Deploy the Frontend on Vercel
+
+Import this GitHub repo into Vercel and use the committed `vercel.json` settings:
+
+- Root Directory: `frontend`
+- Framework: Next.js
+- Install Command: `npm ci`
+- Build Command: `npm run build`
+- Node.js: 22.x
+
+Configure these Vercel environment variables in Production, Preview, and Development:
+
+- `NEXT_PUBLIC_UPLOAD_API`
+- `NEXT_PUBLIC_RESULTS_API`
+- `NEXT_PUBLIC_ANALYTICS_API`
+- `NEXT_PUBLIC_ADMIN_API`
+
+Point `satisfactionmeter.live` and `www.satisfactionmeter.live` at the Vercel project after the production deployment is verified. Preserve existing SES DNS records.
+
 ---
 
 ## Live Endpoints
@@ -350,5 +374,5 @@ Install build tools:
 - `docs/roadmap.md` — what's built, what's in progress, what's next. Read this before starting any work.
 - `docs/SETUP.md` — full setup walkthrough.
 - `CLAUDE.md` — architectural decisions and working conventions (used by the AI assistant).
-- `frontend/` — Next.js frontend (customer portal + admin dashboard). Run `npm run dev` from root to start.
+- `frontend/` — Vercel-hosted Next.js frontend (customer portal + admin dashboard). Run `npm run dev` from root to start locally.
 - `cdk.out/deploy-outputs.json` — current deployed resource names and API URLs.
