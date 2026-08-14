@@ -7,7 +7,7 @@ import { InferenceStack } from '../lib/inference-stack';
 import { MessagingStack } from '../lib/messaging-stack';
 import { ApiStack } from '../lib/api-stack';
 import { ObservabilityStack } from '../lib/observability-stack';
-import { AdminAuthStack } from '../lib/admin-auth-stack';
+import { DashboardApiStack } from '../lib/admin-auth-stack';
 
 const app = new cdk.App();
 
@@ -15,7 +15,7 @@ const env = { account: '860550672813', region: 'ap-southeast-1' };
 
 const captureStack = new CaptureStack(app, 'SatisfactionMeterCapture', { env });
 
-const adminAuthStack = new AdminAuthStack(app, 'SatisfactionMeterAdminAuth', {
+const dashboardApiStack = new DashboardApiStack(app, 'SatisfactionMeterAdminAuth', {
   env,
   submissionsTable: captureStack.submissionsTable,
 });
@@ -23,7 +23,6 @@ const adminAuthStack = new AdminAuthStack(app, 'SatisfactionMeterAdminAuth', {
 const analyticsStack = new AnalyticsStack(app, 'SatisfactionMeterAnalytics', {
   env,
   submissionsTable: captureStack.submissionsTable,
-  protectWithAdminAuthorizer: true,
 });
 
 const inferenceStack = new InferenceStack(app, 'SatisfactionMeterInference', {
@@ -57,9 +56,7 @@ new ObservabilityStack(app, 'SatisfactionMeterObservability', {
 
 // explicit ordering so CDK deploys in the right sequence
 analyticsStack.addDependency(captureStack);
-// analyticsStack -> adminAuthStack ordering is implicit via cross-stack
-// authorizerFunction reference; no explicit addDependency needed here.
 inferenceStack.addDependency(captureStack);
 messagingStack.addDependency(analyticsStack);
 messagingStack.addDependency(inferenceStack);
-adminAuthStack.addDependency(captureStack);
+dashboardApiStack.addDependency(captureStack);

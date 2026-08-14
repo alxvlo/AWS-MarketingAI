@@ -52,6 +52,10 @@ export class ApiStack extends cdk.Stack {
 
     const api = new apigateway.RestApi(this, 'ResultsApi', {
       restApiName: 'satisfaction-meter-results',
+      deployOptions: {
+        throttlingRateLimit: 10,
+        throttlingBurstLimit: 20,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: ['GET', 'POST', 'OPTIONS'],

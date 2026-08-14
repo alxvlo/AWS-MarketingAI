@@ -74,17 +74,16 @@ export default function SubmissionsAuditCard() {
               <table className="w-full text-[12px]">
                 <thead>
                   <tr className="bg-[var(--bg-inset)]">
-                    {["Submission","Time","Email","Status","Emotion","Sent At"].map(h => (
+                    {["Submission","Time","Status","Emotion","Sent At"].map(h => (
                       <th key={h} className="text-left px-4 py-2 eyebrow font-semibold">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {pageItems.map(s => (
-                    <tr key={s.submissionId} className="border-b border-[var(--rule)] last:border-0">
-                      <td className="px-4 py-2 numeric text-[var(--ink-secondary)]">{s.submissionId.slice(0, 8)}…</td>
+                    <tr key={s.displayId} className="border-b border-[var(--rule)] last:border-0">
+                      <td className="px-4 py-2 numeric text-[var(--ink-secondary)]">{s.displayId}</td>
                       <td className="px-4 py-2 numeric whitespace-nowrap">{fmtTime(s.timestamp)}</td>
-                      <td className="px-4 py-2 text-[var(--ink-secondary)]">{s.email}</td>
                       <td className="px-4 py-2"><StatusBadge status={s.status} /></td>
                       <td className="px-4 py-2 capitalize">{s.dominantEmotion ?? "—"}</td>
                       <td className="px-4 py-2 numeric whitespace-nowrap text-[var(--ink-secondary)]">{s.emailSentAt ? fmtTime(s.emailSentAt) : "—"}</td>

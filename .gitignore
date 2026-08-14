@@ -6,6 +6,7 @@ cdk.out/
 *.js.map
 *.js
 !jest.config.js
+!tests/*.test.js
 !cdk.json
 
 # Next.js frontend build artifacts

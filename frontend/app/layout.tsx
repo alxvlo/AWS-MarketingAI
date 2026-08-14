@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Satisfaction Meter",
-  description: "Emotion-driven marketing feedback — admin console",
+  description: "Public emotion-driven marketing demo and analytics dashboard",
 };
 
 export default function RootLayout({

@@ -1,5 +1,4 @@
 import * as cdk from "aws-cdk-lib";
-import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
@@ -7,60 +6,21 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
 import * as path from "path";
 
-interface AdminAuthStackProps extends cdk.StackProps {
+interface DashboardApiStackProps extends cdk.StackProps {
   submissionsTable: dynamodb.Table;
 }
 
-export class AdminAuthStack extends cdk.Stack {
-  public readonly authorizer: apigateway.TokenAuthorizer;
-  public readonly authorizerFunction: lambda.IFunction;
+/**
+ * Public dashboard data API.
+ *
+ * The source filename and deployed stack ID are retained to update the existing
+ * CloudFormation stack in place instead of replacing its API URL.
+ */
+export class DashboardApiStack extends cdk.Stack {
   public readonly api: apigateway.RestApi;
 
-  constructor(scope: Construct, id: string, props: AdminAuthStackProps) {
+  constructor(scope: Construct, id: string, props: DashboardApiStackProps) {
     super(scope, id, props);
-
-    const usernameParam = "/satisfaction-meter/admin/username";
-    const passwordParam = "/satisfaction-meter/admin/password";
-
-    const env = {
-      ADMIN_USERNAME_PARAM: usernameParam,
-      ADMIN_PASSWORD_PARAM: passwordParam,
-    };
-
-    const grantSsm = (fn: lambda.IFunction, suffix: string) => {
-      ssm.StringParameter.fromStringParameterName(this, `UsernameGrant${suffix}`, usernameParam).grantRead(fn);
-      ssm.StringParameter.fromSecureStringParameterAttributes(this, `PasswordGrant${suffix}`, {
-        parameterName: passwordParam,
-      }).grantRead(fn);
-    };
-
-    const loginFn = new NodejsFunction(this, "AdminLoginFunction", {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(__dirname, "../lambdas/admin-login/index.ts"),
-      handler: "handler",
-      timeout: cdk.Duration.seconds(5),
-      environment: env,
-    });
-    grantSsm(loginFn, "Login");
-
-    const authorizerFn = new NodejsFunction(this, "AdminAuthorizerFunction", {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(__dirname, "../lambdas/admin-authorizer/index.ts"),
-      handler: "handler",
-      timeout: cdk.Duration.seconds(5),
-      environment: env,
-    });
-    grantSsm(authorizerFn, "Authorizer");
-    this.authorizerFunction = authorizerFn;
-
-    // Store the authorizer Lambda ARN in SSM so other stacks can look it up
-    // at synth time without creating a CDK cross-stack reference (which would
-    // cause a dependency cycle when those stacks also own a RestApi).
-    new ssm.StringParameter(this, 'AuthorizerFunctionArnParam', {
-      parameterName: '/satisfaction-meter/admin/authorizer-function-arn',
-      stringValue: authorizerFn.functionArn,
-      description: 'ARN of the admin-authorizer Lambda for use by other stacks',
-    });
 
     const submissionsFn = new NodejsFunction(this, "AdminSubmissionsFunction", {
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -72,45 +32,39 @@ export class AdminAuthStack extends cdk.Stack {
     props.submissionsTable.grantReadData(submissionsFn);
 
     this.api = new apigateway.RestApi(this, "AdminApi", {
-      restApiName: "satisfaction-meter-admin",
+      restApiName: "satisfaction-meter-dashboard",
+      deployOptions: {
+        throttlingRateLimit: 10,
+        throttlingBurstLimit: 20,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
-        allowMethods: ["GET", "POST", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization"],
+        allowMethods: ["GET", "OPTIONS"],
+        allowHeaders: ["Content-Type"],
       },
     });
 
-    // CORS headers on API Gateway-generated 4xx/5xx so the browser surfaces
-    // the real status code instead of an opaque "blocked by CORS policy".
     this.api.addGatewayResponse("Default4xx", {
       type: apigateway.ResponseType.DEFAULT_4XX,
       responseHeaders: {
         "Access-Control-Allow-Origin": "'*'",
-        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "Access-Control-Allow-Headers": "'Content-Type'",
       },
     });
     this.api.addGatewayResponse("Default5xx", {
       type: apigateway.ResponseType.DEFAULT_5XX,
       responseHeaders: {
         "Access-Control-Allow-Origin": "'*'",
-        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "Access-Control-Allow-Headers": "'Content-Type'",
       },
     });
 
-    this.authorizer = new apigateway.TokenAuthorizer(this, "AdminTokenAuthorizer", {
-      handler: authorizerFn,
-      identitySource: "method.request.header.Authorization",
-      resultsCacheTtl: cdk.Duration.minutes(5),
-    });
-
     const admin = this.api.root.addResource("admin");
-    admin.addResource("login").addMethod("POST", new apigateway.LambdaIntegration(loginFn));
-    admin.addResource("submissions").addMethod("GET", new apigateway.LambdaIntegration(submissionsFn), {
-      authorizer: this.authorizer,
-      authorizationType: apigateway.AuthorizationType.CUSTOM,
-    });
+    admin.addResource("submissions").addMethod("GET", new apigateway.LambdaIntegration(submissionsFn));
 
-    new cdk.CfnOutput(this, "AdminApiUrl", { value: this.api.url, description: "Base URL for /admin/*" });
-    new cdk.CfnOutput(this, "AdminLoginUrl", { value: `${this.api.url}admin/login` });
+    new cdk.CfnOutput(this, "AdminApiUrl", {
+      value: this.api.url,
+      description: "Base URL for the public dashboard API",
+    });
   }
 }

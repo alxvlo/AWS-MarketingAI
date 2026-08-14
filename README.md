@@ -63,16 +63,15 @@ A serverless web application that detects a customer's facial emotion from a pho
         ▼
 [API Gateway: GET /results/{submissionId}] ◄── [Caller]
 
-─── Analytics / Admin path (Phase 3 — planned) ───────────────────────────────
-[Admin Browser]
-        │  POST /admin/login → Lambda Authorizer validates against SSM credential
+─── Public analytics path ────────────────────────────────────────────────────
+[Public Browser]
         ▼
-[API Gateway: GET /analytics/*] ──► [Lambda Authorizer] ──► [Lambda: Analytics Handlers]
+[API Gateway: GET /analytics/*] ───────────────────────► [Lambda: Analytics Handlers]
         │                                                           │
         │                                                           ▼
         │                                              [DynamoDB scan/query]
         ▼
-[Admin Dashboard] — emotion distribution · volume over time · campaign performance · 7-day trend
+[Public Dashboard] — emotion distribution · volume over time · campaign performance · submissions
 ```
 
 Images never pass through a Lambda proxy — they go directly from the browser to S3 via a presigned URL. This keeps Lambdas stateless and avoids API Gateway's 6 MB payload limit.
@@ -90,8 +89,8 @@ Images never pass through a Lambda proxy — they go directly from the browser t
 | Messaging | Lambda + Amazon SES | Emotion-to-template mapping, transactional email dispatch |
 | Persistence | Amazon DynamoDB | Submission records (submissions table) + campaign tracking (campaigns table) |
 | Results API | API Gateway + Lambda | `GET /results/{submissionId}` endpoint |
-| Analytics | API Gateway + Lambda + DynamoDB | `GET /analytics/emotions`, `/analytics/campaigns`, `/analytics/trends` (Phase 3 — planned) |
-| Admin Auth | API Gateway Lambda Authorizer + SSM Parameter Store | Single admin credential; protects `/analytics/*` endpoints (Phase 3 — planned) |
+| Analytics | API Gateway + Lambda + DynamoDB | Public `GET /analytics/emotions`, `/analytics/campaigns`, and `/analytics/trends` endpoints |
+| Dashboard API | API Gateway + Lambda + DynamoDB | Public, masked submission summaries for the dashboard |
 | Reliability | SQS DLQs + SES bounce/complaint handling | Captures failed Rekognition and SES events; protects sender reputation |
 | Infrastructure | AWS CDK (TypeScript) | Five stacks: `capture`, `inference`, `messaging`, `api`, `analytics` |
 | Identity | AWS IAM | Least-privilege role per Lambda |
@@ -114,20 +113,19 @@ AWS-MarketingAI/
 │   ├── inference-stack.ts        # Rekognition Lambda + DynamoDB + DLQ
 │   ├── messaging-stack.ts        # SES dispatch Lambda + DLQ
 │   ├── api-stack.ts              # GET /results endpoint
-│   └── analytics-stack.ts        # Analytics Lambdas + Lambda Authorizer + campaigns table
+│   └── analytics-stack.ts        # Public analytics Lambdas + campaigns table
 ├── lambdas/                  # Lambda handler source files
 ├── frontend/                 # Frontend: Next.js 16 + React 19 + Tailwind 4
 │   ├── app/
-│   │   ├── page.tsx              # Customer webcam capture page
-│   │   ├── login/page.tsx        # Admin login page
-│   │   └── home/page.tsx         # Admin analytics dashboard
+│   │   ├── page.tsx              # Public dashboard entry page
+│   │   └── home/page.tsx         # Public capture + analytics dashboard
 │   ├── components/
 │   │   ├── WebcamFeed.tsx        # Webcam + file-upload component
 │   │   └── FaceOverlay.tsx       # face-api.js detection overlay
 │   ├── lib/
 │   │   ├── api.ts                # Upload API + presigned URL + polling
 │   │   ├── analytics.ts          # Analytics API client
-│   │   └── adminApi.ts           # Admin auth/submissions API client
+│   │   └── adminApi.ts           # Public submissions API client (legacy filename)
 │   └── public/models/            # face-api.js model weights
 ├── docs/                     # Project docs (roadmap, setup, presentation, architecture PDF)
 ├── scripts/                  # Helper scripts (e.g. push-tickets.sh)

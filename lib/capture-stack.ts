@@ -76,6 +76,10 @@ export class CaptureStack extends cdk.Stack {
     // API Gateway: POST /upload → presigned URL
     const api = new apigateway.RestApi(this, 'CaptureApi', {
       restApiName: 'satisfaction-meter-capture',
+      deployOptions: {
+        throttlingRateLimit: 2,
+        throttlingBurstLimit: 5,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: ['POST', 'OPTIONS'],
@@ -99,7 +103,7 @@ export class CaptureStack extends cdk.Stack {
 
     const uploadResource = api.root.addResource('upload');
     // No API key: this is a public browser-facing endpoint — embedding a key in client JS
-    // would expose it to anyone. Rate limiting is handled by API Gateway's default stage throttle.
+    // would expose it to anyone. The explicit stage throttle limits accidental and basic abuse.
     uploadResource.addMethod('POST', new apigateway.LambdaIntegration(presignedUrlFn));
 
     new cdk.CfnOutput(this, 'UploadApiUrl', {

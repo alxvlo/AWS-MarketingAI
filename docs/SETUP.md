@@ -198,7 +198,7 @@ This starts the Next.js dev server on `http://localhost:3000`.
 4. Allow camera access when prompted, or click **Upload a Photo** to use a local image.
 5. Click **Send for Analysis** and wait ~5 seconds. You should see the detected emotion and email status.
 6. Check `alexvelo199@gmail.com` inbox for the marketing email.
-7. For admin analytics, navigate to `http://localhost:3000/admin`.
+7. The public analytics dashboard is available directly at `http://localhost:3000` and `http://localhost:3000/home/`; no login is required.
 
 > SES is in sandbox mode. Only verified email addresses can receive emails. Do not use a different address for testing — it will silently fail.
 

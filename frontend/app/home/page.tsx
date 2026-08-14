@@ -1,7 +1,3 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth";
 import AppHeader from "@/components/AppHeader";
 import EmotionCapturePanel from "@/components/home/EmotionCapturePanel";
 import KpiStrip from "@/components/home/KpiStrip";
@@ -11,22 +7,6 @@ import TrendsCard from "@/components/home/TrendsCard";
 import SubmissionsAuditCard from "@/components/home/SubmissionsAuditCard";
 
 export default function HomePage() {
-  const router = useRouter();
-  const { isAuthed, hydrated } = useAuth();
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (!isAuthed) router.replace("/login/");
-  }, [hydrated, isAuthed, router]);
-
-  if (!hydrated || !isAuthed) {
-    return (
-      <main className="min-h-screen bg-[var(--bg-canvas)] flex items-center justify-center">
-        <p className="eyebrow">Loading…</p>
-      </main>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)]">
       <AppHeader />

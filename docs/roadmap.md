@@ -1,5 +1,5 @@
 # Satisfaction Meter — Project Roadmap
-**Last updated**: 2026-08-10 (frontend hosting migrated from CloudFront/S3 to Vercel)
+**Last updated**: 2026-08-15 (login removed; dashboard and APIs made public)
 **Region**: ap-southeast-1 (Singapore) · Serverless · CDK TypeScript
 
 ---
@@ -65,8 +65,8 @@ Addressing consultation feedback + known bugs from testing.
 - [x] Removed CDK `WebStack` from the active CDK app; frontend hosting is no longer provisioned by AWS CDK
 - [x] Path filters on `deploy.yml` so backend deploys ignore `frontend/**`
 - [x] S3 upload bucket CORS allows custom domain, `www`, Vercel preview domains, and localhost
-- [ ] Import repo into Vercel and configure `NEXT_PUBLIC_*` environment variables for Production, Preview, and Development
-- [ ] Smoke test: `/`, `/login/`, `/home/` all return 200 on the Vercel production URL
+- [x] Create isolated Vercel project `satisfaction-meter`, configure Production `NEXT_PUBLIC_*` variables, and deploy the static export (2026-08-15)
+- [x] Smoke test: `/` and `/home/` render the public dashboard with the SES notice; `/login/` returns 404 at `https://satisfaction-meter.vercel.app` (2026-08-15)
 - [x] Add 3 DKIM CNAMEs at name.com for SES domain verification (`satisfactionmeter.live`)
 - [x] Verify sender email `noreply@satisfactionmeter.live` in SES console (ap-southeast-1)
 - [ ] Point `satisfactionmeter.live` and `www.satisfactionmeter.live` DNS at Vercel after production deploy is verified; preserve SES DNS records
@@ -85,15 +85,15 @@ Professor confirmed this is required. Simplified from original over-engineered d
 - [x] Lambda: GET /analytics/trends — emotion counts grouped by day (last 30 days)
 - [x] DynamoDB campaigns table: dual-written by send-email Lambda — `{submissionId, email, emailSentAt, templateUsed, dominantEmotion}`. Routes are open during 3A; Lambda Authorizer wired up in 3B.
 
-### 3B — Admin Portal (Frontend + Auth) ✅ DONE
-- [x] API Gateway Lambda Authorizer — validates credentials from SSM Parameter Store (AWS-58)
-- [x] Admin login page (`/login/`) — real Lambda Authorizer + SSM credentials (AWS-64)
+### 3B — Public Dashboard (Frontend + Analytics) ✅ DONE
+- [x] Remove the login page, browser session token, login/authorizer Lambdas, and SSM credential dependency (2026-08-15)
+- [x] Expose dashboard submissions and analytics endpoints without API Gateway authorizers (2026-08-15)
+- [x] Add a visible SES sandbox notice stating that email delivery only works for `alexvelo199@gmail.com` until AWS grants production access (2026-08-15)
 - [x] Admin dashboard: emotion distribution chart — horizontal bar list from live `/analytics/emotions` (AWS-65)
 - [x] Admin dashboard: submission volume over time — Recharts line chart from live `/analytics/trends` (AWS-66)
 - [x] Admin dashboard: campaign performance table — ranked table from live `/analytics/campaigns` (AWS-67)
 - [ ] Admin dashboard: trend forecasting display (simple moving average, 7-day) (AWS-59) — NOT in scope for this overhaul
-- [x] Protect all /analytics/* endpoints behind Lambda Authorizer — CDK route wiring + 401 verification (AWS-69)
-- [x] Wire admin dashboard frontend to real /analytics/* endpoints — live fetch calls with Basic Auth header; mockAnalytics.ts deleted (AWS-70)
+- [x] Wire dashboard frontend to real `/analytics/*` endpoints — public live fetch calls; `mockAnalytics.ts` deleted (AWS-70)
 
 ---
 
@@ -132,3 +132,5 @@ Professor confirmed this is required. Simplified from original over-engineered d
 | 2026-05-08 | Editorial design system (Newsreader serif + warm neutrals + single rust accent) | huashu-design single-direction overhaul — replaces the slate/indigo Tailwind defaults |
 | 2026-05-08 | CloudFront Function extended to 301-redirect bare page routes to trailing-slash canonical | S3 REST API (OAC) has no directory-index concept; bare `/login` returned 403→404. Fixed in `lib/web-stack.ts` and deployed to `SatisfactionMeterWeb` stack. |
 | 2026-08-10 | Frontend hosting moved to Vercel; AWS remains backend-only | User requested Vercel website hosting. `vercel.json` records `frontend/` as project root; `frontend-deploy.yml` and `WebStack` were removed from source. AWS API Gateway, S3 uploads, Rekognition, DynamoDB, SES, admin auth, analytics, and observability stay in CDK. |
+| 2026-08-15 | Removed login and made the dashboard APIs public | User requested public access. Frontend auth gates and Basic Auth headers were removed; API Gateway authorizers and login Lambdas were removed. The deployed `SatisfactionMeterAdminAuth` stack ID remains temporarily to preserve the existing submissions API URL. |
+| 2026-08-15 | Deployed to a new isolated Vercel project | Created `ahi-capstone/satisfaction-meter` without modifying the existing `ahi-capstone` project. Because the frontend uses Next.js static export, the Vercel project uses the Other preset with `npm run build` and `out` as its output directory. Production URL: `https://satisfaction-meter.vercel.app`. |

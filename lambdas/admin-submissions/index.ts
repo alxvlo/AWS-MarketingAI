@@ -1,30 +1,61 @@
 import { APIGatewayProxyHandler } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, ScanCommand, ScanCommandInput } from "@aws-sdk/lib-dynamodb";
+import { createHash } from "node:crypto";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 const TABLE = process.env.SUBMISSIONS_TABLE_NAME!;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "GET,OPTIONS",
 };
 
-const maskEmail = (e: string) => e.replace(/(.{2}).+(@.+)/, "$1***$2");
+const displayId = (submissionId: string) =>
+  createHash("sha256").update(submissionId).digest("hex").slice(0, 12);
+
+interface ProjectedSubmission {
+  submissionId?: string;
+  timestamp?: string;
+  status?: string;
+  dominantEmotion?: string;
+  emailSentAt?: string;
+}
+
+let cache: { expiresAt: number; items: ProjectedSubmission[] } | undefined;
+
+async function loadSafeItems(): Promise<ProjectedSubmission[]> {
+  if (cache && cache.expiresAt > Date.now()) return cache.items;
+
+  const items: ProjectedSubmission[] = [];
+  let exclusiveStartKey: ScanCommandInput["ExclusiveStartKey"];
+  do {
+    const result = await ddb.send(new ScanCommand({
+      TableName: TABLE,
+      ExclusiveStartKey: exclusiveStartKey,
+      ProjectionExpression: "submissionId, #ts, #st, dominantEmotion, emailSentAt",
+      ExpressionAttributeNames: { "#ts": "timestamp", "#st": "status" },
+    }));
+    items.push(...((result.Items ?? []) as ProjectedSubmission[]));
+    exclusiveStartKey = result.LastEvaluatedKey;
+  } while (exclusiveStartKey);
+
+  cache = { expiresAt: Date.now() + 60_000, items };
+  return items;
+}
 
 export const handler: APIGatewayProxyHandler = async () => {
-  const result = await ddb.send(new ScanCommand({ TableName: TABLE }));
-  const items = (result.Items ?? [])
+  // Project only fields safe for anonymous viewing. The one-way display ID
+  // cannot be used with the result or confirm endpoints.
+  const allItems = await loadSafeItems();
+  const items = allItems
     .map(i => ({
-      submissionId:    i.submissionId,
-      email:           maskEmail(i.email ?? ""),
+      displayId:       displayId(i.submissionId ?? ""),
       timestamp:       i.timestamp ?? "",
       status:          i.status ?? "",
       dominantEmotion: i.dominantEmotion,
-      emotionScores:   i.emotionScores,
       emailSentAt:     i.emailSentAt,
-      templateUsed:    i.templateUsed,
     }))
     .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
 
@@ -40,7 +71,7 @@ export const handler: APIGatewayProxyHandler = async () => {
     statusCode: 200,
     headers: { ...cors, "Content-Type": "application/json" },
     body: JSON.stringify({
-      submissions: items,
+      submissions: items.slice(0, 100),
       analytics: { total: items.length, byEmotion, emailSentCount, emailFailedCount },
     }),
   };
